@@ -179,8 +179,6 @@ class MainWindow(QMainWindow):
         asm = r.add_tab("Assemblies")
         g = asm.add_group("Structure")
         g.add_button("New Assembly", "assembly", c.assembly, "A group of parts, optionally on a hinge")
-        g = asm.add_group("Models")
-        g.add_button("Orbital-Node-Alpha", "assembly", c.load_alpha_model, "Build the detailed Orbital-Node-Alpha satellite (6 sub-assemblies, 400+ bodies)")
         g = asm.add_group("Analysis")
         g.add_button("Interference", "check", c.check, "Find overlapping or floating bodies")
         g.add_button("Mass Properties", "mass", c.mass_properties, "Mass, centre of mass and inertia of the whole part")
@@ -213,9 +211,8 @@ class MainWindow(QMainWindow):
         g.add_button("Revolute", "hinge", lambda: self.add_joint("revolute"), "Hinge: rotate an assembly about an axis through a pivot")
         g.add_button("Prismatic", "extrude", lambda: self.add_joint("prismatic"), "Slider: translate an assembly along an axis")
         g.add_button("Spherical", "sphere", lambda: self.add_joint("spherical"), "Gimbal: two rotations (pitch / yaw) about a pivot")
-        g = mo.add_group("Presets")
-        g.add_button("Alpha Motion", "assembly", self.alpha_motion, "Solar tracking, radiator fold, laser turrets with FSM, coolant pulse")
-        g.add_button("Clear", "delete", lambda: self.motion and self.motion.clear(), "Remove all equations, joints and pulses")
+        g = mo.add_group("Setup")
+        g.add_button("Clear", "delete", lambda: self.motion and self.motion.clear(), "Remove all equations, joints and colour animations")
 
         view = r.add_tab("View")
         g = view.add_group("Orient")
@@ -332,22 +329,6 @@ class MainWindow(QMainWindow):
             return
         self.show_motion()
         self.motion_dock.joints.add(kind)
-
-    def alpha_motion(self) -> None:
-        """Load the four Orbital-Node-Alpha mechanisms, building the Alpha model first if the open part is something else."""
-        if self.motion is None:
-            return
-        from .motion_presets import alpha_presets
-        if not alpha_presets(self.session.design).joints:
-            ask = QMessageBox.question(self, "Orbital-Node-Alpha", "The open part is not Orbital-Node-Alpha. Replace it with the Alpha model and load its motion?",
-                                       QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Yes)
-            if ask != QMessageBox.Yes:
-                return
-            self.commands.load_alpha_model()
-            if "bus_hull" not in self.session.design.parts:
-                return
-        self.show_motion()
-        self.motion.load_alpha_presets()
 
     def set_filter(self, mode: str) -> None:
         """Selection filter: 'body' or 'face'."""

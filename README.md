@@ -135,7 +135,7 @@ so nothing is re-tessellated while a mechanism moves, and while playing the view
 (405 bodies, 16 joints, 2 coolant-pulse colour animations) at 1480 x 900 the development Mac sustained about 61 frames per second with the docks open.
 (The rendering is VTK's with `GetPixelData` read-back; "SetLocation on an AIS context" is the OpenCASCADE-viewer equivalent of this, which satCAD does not use.)
 
-**Orbital-Node-Alpha presets** (Motion > Presets > *Alpha Motion*, or the sidebar's *Alpha presets*): four mechanisms written as plain equations you can edit.
+**The Orbital-Node-Alpha example** (open `sattelite designs/orbital_node_alpha_with_motion.json`; nothing is built into the app): four mechanisms written as plain equations you can edit.
 
 | Mechanism | Joint(s) | Equation (defaults are sliders) |
 |---|---|---|
@@ -149,8 +149,9 @@ model's own geometry, so they follow it when you change its parameters.
 
 ## The Orbital-Node-Alpha assembly
 
-`generate_orbital_node_assembly.py` builds the detailed AI-datacentre satellite: six named sub-assemblies, 405 bodies, 9.5 t, no overlaps. In the app:
-**Assemblies > Orbital-Node-Alpha** (untick the bus hull in the Part Navigator to see the blades and coolant pipes). From the command line:
+`generate_orbital_node_assembly.py` builds the detailed AI-datacentre satellite: six named sub-assemblies, 405 bodies, 9.5 t, no overlaps. The app does **not** include it: satCAD starts empty and
+you make what you want or import a design. To use this one, **Open** `sattelite designs/orbital_node_alpha.json` (or `orbital_node_alpha_with_motion.json`, which also carries its Motion Studio setup), then untick the bus hull in the Part Navigator
+to see the blades and coolant pipes. To make a variant, run the script:
 
 ```bash
 python generate_orbital_node_assembly.py --step alpha.step --json alpha.json --set NUM_SERVER_BLADES=12
@@ -178,7 +179,7 @@ nothing is selected: `NUM_SERVER_BLADES` (1 to 18), `RADIATOR_SPAN_MM`, `SOLAR_S
 ## How to use satCAD
 
 **New here? Read the illustrated guide: [docs/HOW_TO_USE.md](docs/HOW_TO_USE.md).** It walks through the app step by step with screenshots: installing, the five areas of the
-window, making your first part, Boolean operations and holes, loading the Orbital-Node-Alpha satellite, Motion Studio (equations, sliders, joints, timeline), saving and exporting.
+window, making your first part, Boolean operations and holes, importing the Orbital-Node-Alpha example satellite, Motion Studio (equations, sliders, joints, timeline), saving and exporting.
 
 | The window | Inside the satellite | Motion Studio |
 |---|---|---|
@@ -258,7 +259,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`384 passed` and the path of the connector.
+`386 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -626,7 +627,6 @@ Open-source-CAD-software/
 │   │   ├── motion_expressions.py the SymPy equation engine and the Motion Expressions sidebar (auto sliders, joints tab)
 │   │   ├── motion_timeline_dock.py  Play / scrub / speed controls and the x(t), v(t), a(t) plots
 │   │   ├── motion_studio.py  the controller: clock, solver, viewport, saving
-│   │   ├── motion_presets.py the four Orbital-Node-Alpha mechanisms
 │   │   ├── theme.py          the dark theme
 │   │   └── icons.py          icons drawn in code (no image files)
 │   ├── paths.py              where designs are saved (the 'sattelite designs' folder)
@@ -664,6 +664,7 @@ Open-source-CAD-software/
 │   ├── test_server.py        launches the real server and talks to it like Claude does
 │   └── test_build_satellite.py  checks the satellite: subsystems, hinges and stowing, bolted optics, validation, analysis, command line
 │
+├── tools/alpha_motion.py        the recipe for the example file with motion (not part of the app)
 ├── tools/make_howto_images.py   captures the annotated screenshots for the how-to guide from the real app
 ├── tools/smoke_test_app.py   starts a packaged Studio and proves it works (used by the build)
 ├── .github/workflows/studio-release.yml   builds the Mac and Windows apps and publishes a release when a version tag is pushed
@@ -846,7 +847,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-384 tests. They include:
+386 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.

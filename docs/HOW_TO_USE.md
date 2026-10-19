@@ -4,7 +4,7 @@ A step-by-step guide to the satCAD desktop app, with pictures. No CAD experience
 `tools/make_howto_images.py`.
 
 **Contents:** [1 Install and start](#1-install-and-start) · [2 The window](#2-the-window-at-a-glance) · [3 Your first part](#3-your-first-part) ·
-[4 Combine and shape](#4-combine-and-shape-parts) · [5 Assemblies](#5-assemblies-and-hinges) · [6 Orbital-Node-Alpha](#6-the-orbital-node-alpha-satellite) ·
+[4 Combine and shape](#4-combine-and-shape-parts) · [5 Assemblies](#5-assemblies-and-hinges) · [6 Importing a satellite](#6-importing-a-satellite-the-orbital-node-alpha-example) ·
 [7 Motion Studio](#7-motion-studio-making-things-move) · [8 Analysis](#8-structural-analysis-beta) · [9 Saving and exporting](#9-saving-and-exporting) ·
 [10 With Claude](#10-using-satcad-with-claude) · [11 Troubleshooting](#11-troubleshooting) · [12 Cheat sheet](#12-cheat-sheet)
 
@@ -53,7 +53,7 @@ The line at the very bottom tells you what to do next ("Edit values in the Prope
 
 ![Home tab](howto/02_ribbon_home.png)
 
-**Assemblies**: groups of parts, the Orbital-Node-Alpha satellite, interference check, mass properties.
+**Assemblies**: groups of parts, interference check, mass properties.
 
 ![Assemblies tab](howto/02_ribbon_assemblies.png)
 
@@ -156,20 +156,23 @@ Assemblies can contain other assemblies (an elevation stage inside an azimuth st
 
 ---
 
-## 6. The Orbital-Node-Alpha satellite
+## 6. Importing a satellite: the Orbital-Node-Alpha example
 
-satCAD includes a detailed model of the AI-datacentre satellite: a hollow bus with 16 server blades and copper cold plates, a coolant loop, two radiator wings with micro-tubes, two
-solar wings and four laser turrets: **405 bodies in 6 sub-assemblies**.
+satCAD **starts empty**: you make what you want, or you import a design. No satellite is built into the app. As an example the project includes a detailed one, **Orbital-Node-Alpha**
+(a hollow bus with 16 server blades and copper cold plates, a coolant loop, two radiator wings with micro-tubes, two solar wings and four laser turrets: **405 bodies in 6 sub-assemblies**).
+It is an ordinary design file, so you open it like any other:
 
-1. **Assemblies → Orbital-Node-Alpha.** After a few seconds the model appears and the tree fills with its six sub-assemblies.
+1. Get the files. In the repository they are in the **`sattelite designs`** folder: `orbital_node_alpha.json` (the geometry) and `orbital_node_alpha_with_motion.json` (the same satellite with its
+   Motion Studio setup). If you installed the app, download them from GitHub and put them in `Documents/satCAD/sattelite designs`.
+2. **Home → Open** (Ctrl+O). The dialog starts in the designs folder. Choose `orbital_node_alpha.json`.
 
-![Orbital-Node-Alpha loaded](howto/11_alpha_loaded.png)
+![Orbital-Node-Alpha opened](howto/11_alpha_loaded.png)
 
-2. In the Part Navigator, **untick the bus hull** (the first body under `Assembly(1)`) to see inside: blades, cold plates, pipes, pumps. Scroll the wheel to zoom in.
+3. In the Part Navigator, **untick the bus hull** (the first body under `Assembly(1)`) to see inside: blades, cold plates, pipes, pumps. Scroll the wheel to zoom in.
 
 ![The hull hidden](howto/12_alpha_hull_hidden.png)
 
-3. Click an empty part of the 3D view so nothing is selected: the Property Editor shows the **model parameters**. Change a number and press Enter and the whole satellite rebuilds.
+4. Click an empty part of the 3D view so nothing is selected: the Property Editor shows the **model parameters**. Change a number and press Enter and the whole satellite rebuilds.
 
 ![Model parameters](howto/13_model_parameters.png)
 
@@ -183,21 +186,25 @@ solar wings and four laser turrets: **405 bodies in 6 sub-assemblies**.
 
 Axes: **Z** is the direction of flight, **Y** points away from the Sun (the radiators), **X** points at the Sun (the solar wings).
 
+The file was made by a script, `generate_orbital_node_assembly.py` (run with Python, optional): it shows how to build a large design from code, and you can run it with different numbers
+(`--set NUM_SERVER_BLADES=12`) to make your own variant and open that. Your own designs work the same way: save them in the designs folder and open them later.
+
 ---
 
 ## 7. Motion Studio: making things move
 
 Motion Studio lets you type **formulas of time** (like the graphing calculator Desmos), attach them to parts as **joints**, and play the result in 3D with live graphs.
 
-### 7.1 The quickest start: the Alpha presets
+### 7.1 The quickest start: open the example with motion
 
-1. Load Orbital-Node-Alpha (section 6).
-2. **Motion → Alpha Motion.** The Motion Expressions panel and the timeline open.
+1. Open `orbital_node_alpha_with_motion.json` (section 6). Its equations, sliders and joints come with the file.
+2. **Motion → Studio** shows the Motion Expressions panel and the timeline.
 3. Press **Play** in the timeline, or drag the time slider.
 
 ![Motion Studio on Orbital-Node-Alpha](howto/14_motion_studio.png)
 
 You will see: the **solar wings** turn once per orbit, the **radiator wings** unfold along a smooth S-curve, the **laser turrets** track with a tiny mirror steering inside, and a **colour wave** runs along the coolant pipes.
+These mechanisms are ordinary equations and joints: change any of them, or start from an empty part and build your own (sections 7.3 and 7.4).
 
 ### 7.2 Equations and sliders
 
@@ -268,7 +275,7 @@ While playing, the right-hand corner shows the frame rate.
 ![Motion ribbon](howto/18_motion_ribbon.png)
 
 **Studio / Equations / Timeline** show the panels · **Play, Stop, Home pose** (the part as drawn, keeping your setup) · **Revolute, Prismatic, Spherical** add joints ·
-**Alpha Motion** loads the presets · **Clear** removes all motion.
+**Clear** removes all equations, joints and colour animations.
 
 Your equations, sliders and joints are saved inside the part's file when you press **Save**, and come back when you **Open** it.
 
@@ -290,7 +297,7 @@ Choose which body is held fixed (for example the bus, face `-z`). It is a simpli
 
 | You press | You get |
 |---|---|
-| **Save** (Ctrl+S) | a `.json` file: the editable design, with formulas and motion setup. Open it again with **Open** (Ctrl+O) |
+| **Save** (Ctrl+S) | a `.json` file: the editable design, with formulas and motion setup. Open it again with **Open** (Ctrl+O): that is also how you **import** a design someone else made |
 | **Simulate → STEP** | a `.step` file for other CAD programs (colours and part names are included) |
 | **Simulate → STL / GLB** | a mesh for 3D printing, or for web and AR viewers |
 

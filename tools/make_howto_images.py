@@ -193,13 +193,12 @@ def main() -> None:
     s.select(None)
     grab_window(win, "10_hole_result.png")
 
-    # ---- 6. Orbital-Node-Alpha -------------------------------------------------------------------------------------------------------------
+    # ---- 6. importing the example satellite with Open ------------------------------------------------------------------------------------
     win.close()
     win, s = new_window((1600, 960))
-    win.commands.load_alpha_model()
+    s.open(ROOT / "sattelite designs" / "orbital_node_alpha.json")                       # what the Open button does with that file
     win.viewport.set_view("iso")
-    win.viewport.zoom_by(1.0)
-    grab_window(win, "11_alpha_loaded.png", [(rect_of(win, win.ribbon), "Assemblies tab > Orbital-Node-Alpha", "tr"), (rect_of(win, win.navigator), "6 sub-assemblies", "br")])
+    grab_window(win, "11_alpha_loaded.png", [(rect_of(win, win.ribbon), "Home > Open", "tr"), (rect_of(win, win.navigator), "6 sub-assemblies", "br")])
     item = win.navigator._items["bus_hull"]
     item.setCheckState(0, Qt.Unchecked)
     win.viewport.zoom_by(5.0)
@@ -210,7 +209,11 @@ def main() -> None:
     save(win.right.grab(), "13_model_parameters.png")
 
     # ---- 7. Motion Studio --------------------------------------------------------------------------------------------------------------------
-    win.alpha_motion()
+    s.open(ROOT / "sattelite designs" / "orbital_node_alpha_with_motion.json")          # the same satellite, with its motion setup saved in the file
+    win.viewport.set_view("iso")
+    item = win.navigator._items["bus_hull"]
+    item.setCheckState(0, Qt.Unchecked)
+    win.viewport.zoom_by(5.0)
     win.motion.seek(1800.0)
     win.show_motion()
     win.ribbon.setCurrentIndex(3)                                                  # the Motion tab

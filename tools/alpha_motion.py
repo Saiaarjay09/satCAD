@@ -1,5 +1,10 @@
-"""Ready-made motion for the Orbital-Node-Alpha model (see generate_orbital_node_assembly.py): four mechanisms, written as plain
-Desmos-style equations you can edit. Pivots and axes are read from the model's own geometry, so they follow it when it is resized.
+"""Example motion for the Orbital-Node-Alpha model (see generate_orbital_node_assembly.py): four mechanisms, written as plain
+Desmos-style equations you can edit. THIS IS NOT PART OF THE APP: it is the recipe behind the example file
+`sattelite designs/orbital_node_alpha_with_motion.json`, which you can open in satCAD with Open.
+
+    python tools/alpha_motion.py            # (re)writes the example file
+
+Pivots and axes are read from the model's own geometry, so they follow it when it is resized.
 
     SADA_Revolute          solar arrays turn 360 degrees per orbit about X (the Sun-facing axis)
     Radiator_Fold_Hinge    radiator wings unfold 0 to 90 degrees along an S-curve (0 = stowed along -Z, 90 = deployed along Y)
@@ -11,7 +16,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .kinematics_solver import ColorPulse, Joint
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from satcad.gui.kinematics_solver import ColorPulse, Joint  # noqa: E402
 
 EQUATIONS = [
     "# Orbit period T_orbit, in seconds, is a slider",
@@ -85,3 +95,27 @@ def alpha_presets(design) -> MotionPreset:
         else:
             p.missing.append(f"{tag}_manifold")
     return p
+
+
+def motion_dict(preset: MotionPreset) -> dict:
+    """The preset in the format satCAD saves inside a part file under the key "motion"."""
+    return dict(engine=dict(equations=list(preset.equations), params=dict(preset.params), ranges={k: list(v) for k, v in preset.ranges.items()}),
+                joints=[j.to_dict() for j in preset.joints], pulses=[p.to_dict() for p in preset.pulses], t_max=preset.t_max)
+
+
+def write_example(path=None) -> Path:
+    """Build Orbital-Node-Alpha and save it, with its motion setup, as a part file satCAD can open."""
+    from generate_orbital_node_assembly import build
+    from satcad.paths import designs_dir
+    design = build()
+    preset = alpha_presets(design)
+    data = design.to_json()
+    data["motion"] = motion_dict(preset)
+    out = Path(path) if path else designs_dir() / "orbital_node_alpha_with_motion.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(data, indent=2))
+    return out
+
+
+if __name__ == "__main__":
+    print("wrote", write_example())

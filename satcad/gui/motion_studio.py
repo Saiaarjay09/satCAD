@@ -13,7 +13,6 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from ..engine import DesignError
 from .kinematics_solver import ColorPulse, Joint, KinematicsError, KinematicsSolver
 from .motion_expressions import ExpressionEngine, ExpressionError
-from .motion_presets import MotionPreset, alpha_presets
 
 FRAME_MS = 16
 
@@ -88,7 +87,8 @@ class MotionStudio(QObject):
         self.model_changed.emit()
         self.time_changed.emit(0.0)
 
-    def load_preset(self, preset: MotionPreset) -> None:
+    def load_preset(self, preset) -> None:
+        """Load a ready-made motion setup (an object with .equations, .params, .ranges, .joints, .pulses and .t_max)."""
         self.pause()
         self.engine.param_values.update(preset.params)
         self.engine.param_ranges.update(preset.ranges)
@@ -103,17 +103,6 @@ class MotionStudio(QObject):
         self._bind()
         self.seek(0.0)
         self.model_changed.emit()
-
-    def load_alpha_presets(self) -> bool:
-        preset = alpha_presets(self.session.design)
-        if not preset.joints and not preset.pulses:
-            self.session.message.emit("warn", "This part has none of the Orbital-Node-Alpha assemblies. Use Assemblies > Orbital-Node-Alpha first.")
-            return False
-        self.load_preset(preset)
-        what = f"{len(preset.joints)} joints and {len(preset.pulses)} coolant pulses"
-        extra = f" Skipped (not in this model): {', '.join(sorted(set(preset.missing))[:8])}." if preset.missing else ""
-        self.session.message.emit("info", f"Motion presets loaded: {what}. Press Play, or drag the timeline.{extra}")
-        return True
 
     # ---- binding to the viewport -------------------------------------------------------------------------------------------------
     def _bind(self) -> None:

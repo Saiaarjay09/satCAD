@@ -198,7 +198,7 @@ class Session(QObject):
         self.message.emit("info", f"New part {name}")
 
     def load_design(self, design: Design, message: str = "") -> None:
-        """Replace the open part with a design built elsewhere (for example the Orbital-Node-Alpha generator), as a new unsaved part."""
+        """Replace the open part with a design built elsewhere (for example a script that generates a satellite), as a new unsaved part."""
         self.design, self.path, self._selected, self.extras = design, None, None, {}
         self._undo.clear()
         self._redo.clear()

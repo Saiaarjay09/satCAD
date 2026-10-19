@@ -203,22 +203,6 @@ class Commands:
                                 pivot_y=self._num(v["pivot_y"]) or 0, pivot_z=self._num(v["pivot_z"]) or 0)
             self.s.add("assembly", v["name"].strip(), **settings)
 
-    def load_alpha_model(self) -> None:
-        """Replace the open part with the Orbital-Node-Alpha assembly (generate_orbital_node_assembly.py)."""
-        if not self.w.confirm_discard():
-            return
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            from generate_orbital_node_assembly import build
-            design = build()
-        except Exception as e:                                       # a missing module or a failed build must not crash the window
-            self.s.message.emit("error", f"Couldn't build Orbital-Node-Alpha: {e}")
-            return
-        finally:
-            QApplication.restoreOverrideCursor()
-        self.s.load_design(design, f"Orbital-Node-Alpha built: {len(design.parts)} bodies in {len(design.features)} features. "
-                                   "Untick the bus hull in the Part Navigator to see the server blades and coolant pipes.")
-
     # ---- edit / files ------------------------------------------------------------------------------------------------------------------
     def delete_selected(self) -> None:
         if self.s.selected:

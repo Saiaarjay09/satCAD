@@ -13,7 +13,7 @@ for pkg in ("build123d", "OCP", "ocpsvg", "scipy", "lib3mf", "py_lib3mf", "bd_ma
     datas += d
     binaries += b
     hiddenimports += h
-hiddenimports += collect_submodules("satcad") + ["generate_orbital_node_assembly"]       # the Alpha generator is imported lazily
+hiddenimports += collect_submodules("satcad")
 
 QT_UNUSED = ["PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtWebEngineQuick", "PySide6.QtQuick", "PySide6.QtQml",
              "PySide6.Qt3DCore", "PySide6.Qt3DRender", "PySide6.QtMultimedia", "PySide6.QtCharts", "PySide6.QtDataVisualization",

@@ -13,6 +13,12 @@ pytest.importorskip("vtkmodules.vtkRenderingCore")      # not `import vtk`: the 
 pytest.importorskip("pyqtgraph")
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import alpha_motion  # noqa: E402  (the example's motion recipe lives in tools/, not in the app)
 import generate_orbital_node_assembly as gen  # noqa: E402
 from satcad import Design  # noqa: E402
 from satcad.gui import theme  # noqa: E402
@@ -214,7 +220,7 @@ def alpha():
 
 
 def test_alpha_presets_define_the_four_mechanisms(alpha):
-    from satcad.gui.motion_presets import alpha_presets
+    alpha_presets = alpha_motion.alpha_presets
     p = alpha_presets(alpha)
     names = [j.name for j in p.joints]
     assert p.missing == []
@@ -238,7 +244,7 @@ def test_alpha_presets_define_the_four_mechanisms(alpha):
 
 
 def test_alpha_presets_report_what_the_model_lacks():
-    from satcad.gui.motion_presets import alpha_presets
+    alpha_presets = alpha_motion.alpha_presets
     d = gen.build()
     del_names = [n for n in list(d.features) if n.startswith("turret_fwd_a")]
     p = alpha_presets(Design("empty"))
@@ -247,7 +253,7 @@ def test_alpha_presets_report_what_the_model_lacks():
 
 
 def test_alpha_motion_moves_the_right_parts_the_right_way(alpha):
-    from satcad.gui.motion_presets import alpha_presets
+    alpha_presets = alpha_motion.alpha_presets
     pre = alpha_presets(alpha)
     s = KinematicsSolver(pre.joints, alpha)
     e = ExpressionEngine()
@@ -285,6 +291,13 @@ def test_alpha_motion_moves_the_right_parts_the_right_way(alpha):
 
 
 # ===== playback and the 3D view =========================================================================================================
+def load_alpha(studio):
+    """Load the example mechanisms (written for the Alpha model) into a Motion Studio."""
+    preset = alpha_motion.alpha_presets(studio.session.design)
+    studio.load_preset(preset)
+    return preset
+
+
 @pytest.fixture()
 def rig(app):
     from satcad.gui.motion_studio import MotionStudio
@@ -304,7 +317,8 @@ def test_presets_move_existing_actors_without_remeshing(rig, monkeypatch):
     import satcad.gui.viewport as vp
     session, v, studio = rig
     before = np.array(v._surfaces["radiator_panel_pos_y"].GetBounds())                          # the home (deployed) pose, before any motion
-    assert studio.load_alpha_presets() and len(studio.joints) == 16 and len(studio.solver.moving_parts) > 100
+    load_alpha(studio)
+    assert len(studio.joints) == 16 and len(studio.solver.moving_parts) > 100
     calls = []
     monkeypatch.setattr(vp, "part_face_data", lambda *a, **k: calls.append(1))
     monkeypatch.setattr(vp, "part_edge_polylines", lambda *a, **k: calls.append(1))
@@ -324,7 +338,7 @@ def test_presets_move_existing_actors_without_remeshing(rig, monkeypatch):
 
 def test_coolant_pulse_travels_along_the_manifold(rig):
     session, v, studio = rig
-    studio.load_alpha_presets()
+    load_alpha(studio)
     studio.seek(0.0)
     c0 = [v._surfaces[p].GetProperty().GetColor() for p in studio.pulses[0].parts]
     studio.seek(0.5)
@@ -337,7 +351,7 @@ def test_coolant_pulse_travels_along_the_manifold(rig):
 def test_playback_clock_speed_loop_and_stop(rig, monkeypatch):
     import satcad.gui.motion_studio as ms
     session, v, studio = rig
-    studio.load_alpha_presets()
+    load_alpha(studio)
     studio.set_t_max(100.0)
     clock = [1000.0]
     monkeypatch.setattr(ms.time, "perf_counter", lambda: clock[0])
@@ -372,7 +386,7 @@ def test_playback_clock_speed_loop_and_stop(rig, monkeypatch):
 def test_motion_setup_is_saved_and_restored_with_the_part(rig, tmp_path):
     from satcad.gui.motion_studio import MotionStudio
     session, v, studio = rig
-    studio.load_alpha_presets()
+    load_alpha(studio)
     studio.engine.set_param("A_az", 7.0)
     assert session.save(tmp_path / "alpha.json")
     data = __import__("json").loads((tmp_path / "alpha.json").read_text())
@@ -411,7 +425,7 @@ def test_bad_joint_bindings_are_refused_with_a_message(rig):
 def test_posing_the_whole_alpha_model_is_cheap(rig):
     import time
     session, v, studio = rig
-    studio.load_alpha_presets()
+    load_alpha(studio)
     t0 = time.perf_counter()
     for i in range(100):
         studio.pose(i * 7.3)
@@ -512,29 +526,56 @@ def test_timeline_plots_x_v_a_with_a_cursor_that_scrubs(rig):
     assert not studio.playing
 
 
-def test_window_has_a_motion_tab_and_hidden_docks(app):
+def test_the_app_starts_empty_with_no_built_in_satellite(app):
+    from PySide6.QtWidgets import QToolButton
     from satcad.gui.ui_layout import MainWindow
     win = MainWindow(Session())
     try:
         win.viewport.grab_image()
     except Exception as e:
         pytest.skip(f"off-screen rendering not available: {e}")
+    assert win.session.design.parts == {} and win.session.design.features == {} and win.motion.joints == [] and win.motion.engine.equations == []
     tabs = [win.ribbon.tabText(i) for i in range(win.ribbon.count())]
     assert "Motion" in tabs and "Simulate" in tabs
-    assert win.motion is not None and not win.motion_dock.isVisible() and not win.timeline_dock.isVisible()
+    labels = " ".join(b.text() + " " + b.toolTip() for b in win.ribbon.findChildren(QToolButton)).lower()
+    assert "alpha" not in labels and "orbital" not in labels                                   # no pre-installed satellite on any button
+    assert not hasattr(win.commands, "load_alpha_model") and not hasattr(win.motion, "load_alpha_presets")
+    sources = "".join(p.read_text() for p in (ROOT / "satcad").rglob("*.py")) + (ROOT / "satcad_app.spec").read_text()
+    assert "generate_orbital_node_assembly" not in sources                                       # the app neither imports nor bundles the satellite
+
+
+def test_the_example_satellite_is_imported_with_open_and_brings_its_motion(app, tmp_path):
+    from satcad.gui.ui_layout import MainWindow
+    win = MainWindow(Session())
+    try:
+        win.viewport.grab_image()
+    except Exception as e:
+        pytest.skip(f"off-screen rendering not available: {e}")
     win.show()
+    example = ROOT / "sattelite designs" / "orbital_node_alpha_with_motion.json"
+    assert win.session.open(example)
+    assert len(win.session.design.parts) > 350 and len(win.motion.joints) == 16 and len(win.motion.pulses) == 2
+    assert win.motion.engine.get_param("T_orbit") == 5400.0 and "theta_solar" in win.motion.engine.function_names(1)
     win.show_motion()
     assert win.motion_dock.isVisible() and win.timeline_dock.isVisible()
-    win.commands.load_alpha_model()
-    assert len(win.session.design.parts) > 350
-    win.alpha_motion()
-    assert len(win.motion.joints) == 16
     win.toggle_play()
     assert win.motion.playing
     win.toggle_play()
     assert not win.motion.playing
     win.motion.seek(300.0)
-    win.save_screenshot(str(__import__("pathlib").Path(__import__("tempfile").gettempdir()) / "motion_window.png"))
+    win.save_screenshot(str(tmp_path / "motion_window.png"))
+    # the plain geometry-only file imports too (no motion)
+    assert win.session.open(ROOT / "sattelite designs" / "orbital_node_alpha.json")
+    assert len(win.session.design.parts) > 350 and win.motion.joints == []
+
+
+def test_the_example_file_matches_the_recipe(app):
+    import json
+    data = json.loads((ROOT / "sattelite designs" / "orbital_node_alpha_with_motion.json").read_text())
+    assert data["format"] == "satcad-2" and len(data["motion"]["joints"]) == 16
+    d = Design("x")
+    d.load_data(data)
+    assert len(alpha_motion.alpha_presets(d).joints) == 16 and alpha_motion.alpha_presets(d).missing == []
 
 
 def test_property_editor_exposes_the_model_parameters(app):
