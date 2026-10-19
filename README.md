@@ -44,7 +44,7 @@ for messages and results. Dark theme throughout. It is NX-*inspired* (layout and
 
 ![The satCAD desktop application](docs/satcad_app.png)
 
-**Install and run** (Python 3.10 or newer; the graphics libraries are large, roughly 400 MB):
+**Download it:** the **Releases** page has a `.dmg` for Apple-silicon Macs and a `-setup.exe` installer for Windows (unsigned, so the first launch shows a warning; the release notes explain the two clicks). **Or run it from source** (Python 3.10 or newer; the graphics libraries are large, roughly 400 MB):
 
 ```bash
 pip install -r requirements.txt          # CAD kernel (build123d / OpenCASCADE) and the engine
@@ -769,7 +769,7 @@ The app is the same Python code wrapped by [PyInstaller](https://pyinstaller.org
 system**; GitHub does this for you:
 
 1. Commit your changes and push them to `main`.
-2. Tag a version and push the tag: `git tag v0.3.0 && git push origin v0.3.0`.
+2. Tag a version and push the tag: `git tag v0.4.0 && git push origin v0.4.0` for the **desktop application**, or `studio-v0.3.1` for the browser-based Studio (two separate workflows).
 3. The **Build SatCAD Studio** workflow (`.github/workflows/studio-release.yml`) runs on a Mac and a Windows machine, tests the packaged app by
    actually starting it (`tools/smoke_test_app.py`), makes the `.dmg` and the Windows installer, and attaches both to a new Release.
 
