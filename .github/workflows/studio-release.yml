@@ -1,10 +1,11 @@
+# (The browser-based Studio. The desktop application has its own workflow, app-release.yml.)
 # Builds SatCAD Studio for macOS (Apple silicon) and Windows (64-bit) and, when you push a tag like v0.3.0, publishes a GitHub Release.
 # You can also run it by hand (Actions tab -> "Build SatCAD Studio" -> Run workflow) to get the files as downloadable artifacts only.
 name: Build SatCAD Studio
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["studio-v*"]
   workflow_dispatch:
 
 permissions:
@@ -34,7 +35,7 @@ jobs:
 
       - name: Work out the version
         run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then V="${GITHUB_REF_NAME#v}"; else V="0.0.0-dev"; fi
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then V="${GITHUB_REF_NAME#studio-v}"; else V="0.0.0-dev"; fi
           echo "VERSION=$V" >> "$GITHUB_ENV"
 
       - name: Install
@@ -105,4 +106,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -la files
-          gh release create "$GITHUB_REF_NAME" files/* --title "SatCAD Studio ${GITHUB_REF_NAME#v}" --notes-file docs/RELEASE_NOTES.md
+          gh release create "$GITHUB_REF_NAME" files/* --title "SatCAD Studio ${GITHUB_REF_NAME#studio-v}" --notes-file docs/RELEASE_NOTES.md
