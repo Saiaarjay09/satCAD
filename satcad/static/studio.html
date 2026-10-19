@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SatCAD Studio</title>
+<style>
+:root{--bg:#f6f3ec;--panel:#fffdf8;--ink:#1b1b1b;--muted:#6b665c;--rule:#1b1b1b;--line:#d9d3c4;--accent:#9c2a1c;--ok:#2e6b3a;--field:#fff;--shadow:rgba(0,0,0,.08)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15161a;--panel:#1c1e23;--ink:#ecebe6;--muted:#9a978e;--rule:#ecebe6;--line:#33353c;--accent:#e0694f;--ok:#74c083;--field:#23252b;--shadow:rgba(0,0,0,.4)}}
+:root[data-theme=dark]{--bg:#15161a;--panel:#1c1e23;--ink:#ecebe6;--muted:#9a978e;--rule:#ecebe6;--line:#33353c;--accent:#e0694f;--ok:#74c083;--field:#23252b;--shadow:rgba(0,0,0,.4)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+.masthead{padding:10px 16px 0;border-bottom:3px double var(--rule);flex:none}
+.kicker{display:flex;justify-content:space-between;font:11px/1 Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding-bottom:6px}
+.titlerow{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:6px 0 8px}
+h1{font:700 30px/1 Georgia,"Times New Roman",serif;margin:0;letter-spacing:-.01em}
+h1 small{font:italic 13px Georgia,serif;color:var(--muted);margin-left:8px;font-weight:400}
+.spacer{flex:1}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+button,select,input,textarea{font:inherit;color:inherit}
+button{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.danger{color:var(--accent)}
+input,select,textarea{background:var(--field);border:1px solid var(--line);border-radius:5px;padding:4px 7px;min-width:0}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#designname{font:700 14px Georgia,serif;width:170px}
+main{flex:1;display:grid;grid-template-columns:minmax(330px,400px) 1fr;min-height:0}
+aside{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+.tabs{display:flex;border-bottom:1px solid var(--line);flex:none}
+.tabs button{flex:1;border:0;border-radius:0;background:none;padding:9px 2px;font:600 11px Georgia,serif;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.pane{flex:1;overflow:auto;padding:12px;display:none}
+.pane.on{display:block}
+#view{position:relative;min-height:0}
+#view iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;margin-bottom:5px;cursor:pointer;background:var(--field)}
+.row:hover,.row.sel{border-color:var(--ink)}
+.row .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.chip{font:10px/1 Georgia,serif;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:2px 5px;color:var(--muted);flex:none}
+.mass{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.muted{color:var(--muted)}
+.field{display:grid;grid-template-columns:110px 1fr;gap:6px;align-items:start;margin-bottom:5px}
+.field label{padding-top:5px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.field label b{color:var(--accent)}
+.field input,.field select,.field textarea{width:100%}
+h3{font:700 15px Georgia,serif;margin:14px 0 6px;border-bottom:1px solid var(--line);padding-bottom:3px}
+h3:first-child{margin-top:0}
+details{margin:8px 0}summary{cursor:pointer;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;background:var(--field)}
+table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font:600 11px Georgia,serif;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+td input{width:100%}
+.status{flex:none;border-top:1px solid var(--line);padding:6px 16px;display:flex;gap:18px;flex-wrap:wrap;background:var(--panel);font-variant-numeric:tabular-nums}
+.status b{font-family:Georgia,serif}
+#msg{margin-left:auto;max-width:55%}
+.err{color:var(--accent)}.ok{color:var(--ok)}
+.warn{border-left:3px solid var(--accent);padding:4px 8px;margin:4px 0;background:var(--field)}
+pre{white-space:pre-wrap;margin:0;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+@media (max-width:760px){main{grid-template-columns:1fr;grid-template-rows:auto 55vh}aside{border-right:0;border-bottom:1px solid var(--line)}}
+</style></head><body>
+<header class="masthead">
+  <div class="kicker"><span>Spacecraft CAD &middot; Local edition</span><span id="today"></span><span>Runs on this computer only</span></div>
+  <div class="titlerow">
+    <h1>SatCAD Studio<small>design &middot; check &middot; analyse</small></h1>
+    <input id="designname" aria-label="Design name" title="Design name (letters, digits, _ and -)">
+    <div class="spacer"></div>
+    <div class="toolbar">
+      <button id="bnew">New</button>
+      <button id="bopen">Open&hellip;</button>
+      <button id="bsave" class="primary">Save</button>
+      <select id="bexport" aria-label="Export"><option value="">Export&hellip;</option><option value="step">STEP (other CAD)</option><option value="stl">STL (3D printing)</option><option value="glb">GLB (web / AR)</option></select>
+      <button id="bquit" title="Quit SatCAD Studio">Quit</button>
+      <input type="file" id="file" accept=".json,application/json" hidden>
+    </div>
+  </div>
+</header>
+<main>
+  <aside>
+    <div class="tabs" role="tablist">
+      <button data-tab="parts" class="on">Parts</button><button data-tab="add">Add</button><button data-tab="vars">Variables</button><button data-tab="check">Check</button><button data-tab="analyze">Analyse</button>
+    </div>
+    <section class="pane on" id="p-parts"><div id="partlist"></div><div id="editor"></div></section>
+    <section class="pane" id="p-add"></section>
+    <section class="pane" id="p-vars"></section>
+    <section class="pane" id="p-check"></section>
+    <section class="pane" id="p-analyze"></section>
+  </aside>
+  <div id="view"><iframe id="viewer" title="3D view" src="/viewer"></iframe></div>
+</main>
+<div class="status"><span>Mass <b id="smass">–</b></span><span>Size <b id="ssize">–</b></span><span>Parts <b id="scount">0</b></span><span id="msg"></span></div>
+<script>
+"use strict";
+const TOKEN="__TOKEN__";
+let S=null, SCH=null, dirty=false, selected=null;
+const $=id=>document.getElementById(id);
+function h(tag,attrs,...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs||{})){if(k==="class")e.className=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?"":v)}for(const k of kids.flat())if(k!=null)e.append(k.nodeType?k:document.createTextNode(String(k)));return e}
+function say(text,cls){const m=$("msg");m.textContent=text;m.className=cls||"";if(cls==="ok")setTimeout(()=>{if(m.textContent===text)m.textContent=""},4000)}
+async function api(path,body){
+  const r=await fetch(path,body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json","X-Studio-Token":TOKEN},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({error:"The app returned something unexpected."}));
+  if(!r.ok)throw new Error(j.error||("Request failed ("+r.status+")"));return j}
+async function act(path,body,okmsg){try{const s=await api(path,body);if(s.features)render(s,true);if(okmsg)say(okmsg,"ok");return s}catch(e){say(e.message,"err");throw e}}
+const num=x=>typeof x==="number"?(Math.abs(x)>=1000?x.toLocaleString(undefined,{maximumFractionDigits:0}):String(+x.toPrecision(5))):x;
+function parseVal(t){t=t.trim();if(t==="")return undefined;if(/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(t))return Number(t);
+  if(t==="true")return true;if(t==="false")return false;if(t==="null")return null;
+  if(t[0]==="["||t[0]==="{"){try{return JSON.parse(t)}catch(e){throw new Error("Couldn't read '"+t.slice(0,30)+"' as a list. Use the form [[0,0],[10,0]].")}}return t}
+const show=v=>v==null?"":(typeof v==="string"?v:(typeof v==="object"?JSON.stringify(v):String(v)));
+const HINTS={side:["+x","-x","+y","-y","+z","-z"],axis:["x","y","z","+x","-x","+y","-y","+z","-z"],plane:["xy","yz","zx"],profile:["rect","circle","slot","rounded_rect","ellipse","ngon","polygon"],
+ mode:["linear","circular"],shape:["circle","rect"],hole_type:["clearance","tapped","counterbore","countersink"],standard:["M3","M4","M5","M6","M8","M10","M12"],size:["M3","M4","M5","M6","M8","M10","M12"],
+ role:["structure","chassis","radiator","solar","payload","antenna"],direction:["inward","outward"],joint_axis:["x","y","z"],edges:["all","parallel:x","parallel:y","parallel:z","face:+x","face:-x","face:+y","face:-y","face:+z","face:-z"]};
+const KINDS={chassis:"Main box (hollow if wall > 0)",box:"Plain block",cylinder:"Cylinder",sphere:"Sphere",panel:"Flat panel attached to a face (radiator, solar wing)",extrude:"Push a 2D shape into a solid",revolve:"Spin a profile round an axis",
+ sweep:"Pipe along a path with bends",loft:"Blend between shapes",shell:"Hollow out a solid",fillet_edges:"Round / bevel edges",hole:"ISO hole (M3 to M12)",fastener:"Socket-head screw",cutout:"Round or rectangular cut",
+ pattern:"Repeat a part",mirror:"Mirror copy",assembly:"Group of parts (can be a hinge)"};
+function fieldRow(k,def,val,req,listId){
+  const multi=(typeof def==="object"&&def!==null)||["points","sections","path","open_faces"].includes(k);
+  const inp=multi?h("textarea",{rows:2,"data-k":k,placeholder:req?"required":show(def)}):h("input",{"data-k":k,placeholder:req?"required":show(def),list:HINTS[k]?listId+k:null,autocomplete:"off"});
+  inp.value=show(val);return h("div",{class:"field"},h("label",{title:k},k,req?h("b",null," *"):null),inp,HINTS[k]?h("datalist",{id:listId+k},HINTS[k].map(o=>h("option",{value:o}))):null)}
+function collect(box,orig){const out={};for(const el of box.querySelectorAll("[data-k]")){const k=el.dataset.k,t=el.value;if(orig&&t===show(orig[k]))continue;const v=parseVal(t);
+  if(v===undefined){if(orig&&k in orig){const d=SCH.kinds[orig.__kind][k];out[k]=d==="__required__"?undefined:d;if(out[k]===undefined)delete out[k]}}else out[k]=v}return out}
+/* ---------- rendering ---------- */
+function render(s,reloadView){S=s;$("designname").value=s.name;const m=s.measure||{};
+  $("smass").textContent=m.total_mass_kg!=null?num(m.total_mass_kg)+" kg":"–";$("ssize").textContent=m.overall_size_mm?m.overall_size_mm.map(v=>(v/1000).toFixed(2)).join(" × ")+" m":"–";
+  $("scount").textContent=m.parts||0;
+  const L=$("partlist");L.replaceChildren();
+  if(!s.features.length)L.append(h("p",{class:"muted"},"Nothing here yet. Open the Add tab to start, or press Open to load a design."));
+  for(const f of s.features)L.append(h("div",{class:"row"+(f.name===selected?" sel":""),onclick:()=>{selected=f.name;render(S,false);},title:f.assembly?"in "+f.assembly:""},
+    h("span",{class:"chip"},f.kind),h("span",{class:"n"},f.name),f.mass_kg!=null?h("span",{class:"mass"},num(f.mass_kg)+" kg"):null));
+  renderEditor();renderVars();renderPartsSelects();
+  if(reloadView)$("viewer").src="/viewer?"+Date.now()}
+function renderEditor(){const E=$("editor");E.replaceChildren();const f=S&&S.features.find(x=>x.name===selected);if(!f)return;
+  const box=h("div",{class:"card"},h("h3",null,f.name+" ",h("span",{class:"chip"},f.kind)));
+  const raw={...f.raw,__kind:f.kind};
+  for(const[k,def]of Object.entries(SCH.kinds[f.kind]))box.append(fieldRow(k,def,f.raw[k],def==="__required__","e-"));
+  box.append(h("div",{class:"toolbar"},h("button",{class:"primary",onclick:async()=>{try{const ch=collect(box,raw);if(!Object.keys(ch).length)return say("Nothing changed.");await act("/api/edit",{name:f.name,changes:ch},"Updated "+f.name);dirty=true}catch(e){say(e.message,"err")}}},"Apply"),
+    h("button",{class:"danger",onclick:async()=>{if(!confirm("Remove "+f.name+"?"))return;try{await act("/api/remove",{name:f.name},"Removed "+f.name);selected=null;dirty=true;render(S,false)}catch(e){}}},"Remove"),
+    h("button",{onclick:()=>{selected=null;render(S,false)}},"Close")));
+  box.append(h("p",{class:"muted"},"Values can be numbers or formulas such as =chassis.width/2 + wing_gap. Leave a field empty to use its default."));E.append(box)}
+function renderVars(){const P=$("p-vars");P.replaceChildren();P.append(h("h3",null,"Variables"),h("p",{class:"muted"},"A named number or formula. Use it in any setting with ="+" (e.g. =wingspan/2). Change it and the whole design rebuilds."));
+  const t=h("table",null,h("tr",null,h("th",null,"Name"),h("th",null,"Definition"),h("th",null,"Value"),h("th")));
+  for(const[n,v]of Object.entries(S.variables)){const inp=h("input",{value:show(v.definition)});
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")setv(n,inp.value)});
+    t.append(h("tr",null,h("td",null,n),h("td",null,inp),h("td",{class:"muted"},typeof v.value==="number"?num(v.value):show(v.value)),
+      h("td",null,h("button",{title:"Delete",onclick:()=>act("/api/variable/delete",{name:n},"Deleted "+n).then(()=>dirty=true).catch(()=>{})},"×"))))}
+  P.append(t);const nn=h("input",{placeholder:"name"}),nv=h("input",{placeholder:"number or =formula"});
+  P.append(h("h3",null,"New variable"),h("div",{class:"toolbar"},nn,nv,h("button",{onclick:()=>setv(nn.value,nv.value)},"Set")))}
+async function setv(name,text){try{const v=parseVal(text);if(v===undefined)return say("Give a value.","err");await act("/api/variable",{name:name.trim(),value:v},"Set "+name);dirty=true}catch(e){say(e.message,"err")}}
+function renderAdd(){const P=$("p-add");P.replaceChildren();const kind=h("select",null,Object.keys(SCH.kinds).map(k=>h("option",{value:k},k+" – "+(KINDS[k]||""))));
+  const name=h("input",{placeholder:"name, e.g. main_body",id:"addname"});const form=h("div");
+  const draw=()=>{form.replaceChildren();const sch=SCH.kinds[kind.value];const req=Object.entries(sch).filter(([k,v])=>v==="__required__"),opt=Object.entries(sch).filter(([k,v])=>v!=="__required__");
+    for(const[k]of req)form.append(fieldRow(k,"__required__","",true,"a-"));
+    if(opt.length){const d=h("details",null,h("summary",null,"Optional settings ("+opt.length+")"));for(const[k,v]of opt)d.append(fieldRow(k,v,"",false,"a-"));form.append(d)}};
+  kind.addEventListener("change",draw);draw();
+  P.append(h("h3",null,"Add a part"),h("div",{class:"field"},h("label",null,"type"),kind),h("div",{class:"field"},h("label",null,"name"),name),form,
+   h("div",{class:"toolbar"},h("button",{class:"primary",onclick:async()=>{try{const settings=collect(form,null);await act("/api/add",{kind:kind.value,name:name.value.trim(),settings},"Added "+name.value.trim());selected=name.value.trim();dirty=true;name.value="";render(S,false)}catch(e){say(e.message,"err")}}},"Add")),
+   h("p",{class:"muted"},"Sizes are in millimetres. * means required. Panels attach to an existing part: set attach_to and side. Lists look like [[0,0],[100,0],[100,50]]."))}
+function renderPartsSelects(){}
+/* ---------- check ---------- */
+function renderCheck(){const P=$("p-check");P.replaceChildren();const m=S.measure||{};
+  P.append(h("h3",null,"Mass properties"));
+  if(!m.parts)P.append(h("p",{class:"muted"},"The design is empty."));else{
+    const rows=[["Total mass",num(m.total_mass_kg)+" kg"],["Centre of mass",m.centre_of_mass_mm?m.centre_of_mass_mm.map(v=>(v/1000).toFixed(3)).join(", ")+" m":"–"],["Overall size",m.overall_size_mm.map(v=>(v/1000).toFixed(2)).join(" × ")+" m"]];
+    if(m.principal_moments_kg_m2)rows.push(["Principal inertias",m.principal_moments_kg_m2.map(num).join(" / ")+" kg m²"]);
+    for(const[k,v]of Object.entries(m.mass_by_role_kg||{}))rows.push(["Mass: "+k,num(v)+" kg"]);
+    P.append(h("table",null,rows.map(([a,b])=>h("tr",null,h("td",{class:"muted"},a),h("td",null,b)))))}
+  const out=h("div");P.append(h("h3",null,"Checks"),h("button",{class:"primary",onclick:async()=>{out.replaceChildren(h("p",{class:"muted"},"Checking…"));try{const r=await api("/api/check");out.replaceChildren();
+     out.append(h("p",{class:r.ok?"ok":"err"},r.advice||(r.ok?"No problems found.":"Problems found.")));
+     for(const o of r.overlaps||[])out.append(h("div",{class:"warn"},"Overlap: "+o.a+" and "+o.b+" ("+num(o.overlap_cm3)+" cm³)"));
+     for(const f of r.floating_parts||[])out.append(h("div",{class:"warn"},"Floating: "+f.part+" (nearest part "+num(f.nearest_gap_mm)+" mm away)"));
+     if((r.thread_engagements||[]).length)out.append(h("p",{class:"muted"},r.thread_engagements.length+" screws sit in tapped holes (expected)."))}catch(e){out.replaceChildren(h("p",{class:"err"},e.message))}}},"Run checks"),out)}
+/* ---------- analyse ---------- */
+function renderAnalyze(){const P=$("p-analyze");P.replaceChildren();const parts=S.features.filter(f=>["chassis","panel","box"].includes(f.kind)).map(f=>f.name);
+  const kind=h("select",null,h("option",{value:"modal"},"Vibration modes"),h("option",{value:"static"},"Stress under g-load"));
+  const part=h("select",null,h("option",{value:""},"(none – free in orbit)"),parts.map(n=>h("option",{value:n},n)));
+  const side=h("select",null,["-z","+z","-x","+x","-y","+y"].map(s=>h("option",{value:s},s)));const cons=h("select",null,h("option",{value:"perimeter"},"edge ring (adapter)"),h("option",{value:"face"},"whole face"));
+  const nm=h("input",{value:"6",type:"number",min:1,max:20}),gx=h("input",{value:"0"}),gy=h("input",{value:"0"}),gz=h("input",{value:"6"});const out=h("div");
+  P.append(h("h3",null,"Structural analysis (BETA)"),h("p",{class:"muted"},"Flat-plate shell model, linear, concept stage. Fold hinges first (set the deploy-angle variables) to analyse the stowed launch state."),
+   h("div",{class:"field"},h("label",null,"analysis"),kind),h("div",{class:"field"},h("label",null,"held fixed"),part),h("div",{class:"field"},h("label",null,"face"),side),h("div",{class:"field"},h("label",null,"clamp"),cons),
+   h("div",{class:"field"},h("label",null,"modes"),nm),h("div",{class:"field"},h("label",null,"load g (x y z)"),h("div",{class:"toolbar"},gx,gy,gz)),
+   h("button",{class:"primary",onclick:async()=>{out.replaceChildren(h("p",{class:"muted"},"Running… large designs can take a minute."));
+     try{const r=await api("/api/analyze",{kind:kind.value,fixed_part:part.value||null,fixed_side:part.value?side.value:null,constraint:cons.value,n_modes:+nm.value,accel_g:[+gx.value,+gy.value,+gz.value]});out.replaceChildren();
+      if(r.kind==="modal"){out.append(h("p",null,"Frequencies (Hz): ",h("b",null,r.frequencies_hz.join(", "))),h("p",{class:"muted"},"Model mass "+num(r.mass_kg)+" kg vs CAD "+num(r.cad_mass_kg)+" kg. "+r.rigid_body_modes_removed+" rigid-body modes removed."),
+        h("button",{onclick:()=>window.open("/modes","_blank")},"Open animated mode shapes"))}
+      else{out.append(h("p",null,"Max stress ",h("b",null,r.max_von_mises_mpa+" MPa")," in ",h("b",null,r.worst_plate),"; max displacement ",h("b",null,r.max_displacement_mm+" mm")),
+        h("table",null,h("tr",null,h("th",null,"Plate"),h("th",null,"Stress MPa"),h("th",null,"Margin")),Object.entries(r.plates).map(([k,v])=>h("tr",null,h("td",null,k),h("td",null,v.stress_mpa),h("td",{class:v.margin!=null&&v.margin<0?"err":""},v.margin==null?"–":v.margin)))),
+        h("p",{class:"muted"},"Margin below 0 means the plate yields (safety factor 1.25). Linear model: large displacements are not trustworthy."))}
+      for(const w of r.warnings||[])out.append(h("div",{class:"warn"},w))}catch(e){out.replaceChildren(h("p",{class:"err"},e.message))}}},"Run"),out)}
+/* ---------- chrome ---------- */
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id==="p-"+b.dataset.tab));if(b.dataset.tab==="check")renderCheck();if(b.dataset.tab==="analyze")renderAnalyze()}));
+$("bnew").onclick=async()=>{if(dirty&&!confirm("Discard unsaved changes and start a new design?"))return;const n=prompt("Name for the new design:","my_design");if(!n)return;try{selected=null;await act("/api/new",{name:n.trim()},"New design");dirty=false;render(S,true)}catch(e){}};
+$("bopen").onclick=()=>$("file").click();
+$("file").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(dirty&&!confirm("Discard unsaved changes and open this design?"))return;
+  try{const data=JSON.parse(await f.text());selected=null;await act("/api/open",{data},"Opened "+f.name);dirty=false}catch(err){say(err instanceof SyntaxError?"That file isn't valid JSON.":err.message,"err")}};
+$("bsave").onclick=async()=>{const r=await fetch("/api/save");const blob=await r.blob();const a=h("a",{href:URL.createObjectURL(blob),download:S.name+".json"});document.body.append(a);a.click();a.remove();dirty=false;say("Saved "+S.name+".json to your downloads folder.","ok")};
+$("bexport").onchange=async e=>{const fmt=e.target.value;e.target.value="";if(!fmt)return;try{const r=await fetch("/api/export?fmt="+fmt);if(!r.ok)throw new Error((await r.json()).error);const blob=await r.blob();
+  const a=h("a",{href:URL.createObjectURL(blob),download:S.name+"."+fmt});document.body.append(a);a.click();a.remove();say("Exported "+S.name+"."+fmt,"ok")}catch(err){say(err.message,"err")}};
+$("designname").onchange=async e=>{try{await act("/api/rename",{name:e.target.value.trim()});dirty=true}catch(err){e.target.value=S.name}};
+$("bquit").onclick=async()=>{if(dirty&&!confirm("You have unsaved changes. Quit anyway?"))return;dirty=false;try{await api("/api/quit",{})}catch(e){}document.body.replaceChildren(h("p",{style:"padding:40px;font:18px Georgia,serif"},"SatCAD Studio has quit. You can close this tab."))};
+window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
+$("today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+setInterval(()=>fetch("/api/ping").catch(()=>{}),10000);
+(async()=>{try{SCH=await api("/api/schemas");const s=await api("/api/state");render(s,false);renderAdd();$("viewer").src="/viewer"}catch(e){say(e.message,"err")}})();
+</script></body></html>

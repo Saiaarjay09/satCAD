@@ -50,9 +50,13 @@ def _script_safe_json(obj) -> str:
             .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
 
 
-def viewer_html(design: Design) -> str:
+OFFLINE_THREE = "/static/three.min.js"          # served by SatCAD Studio, so the viewer works without internet
+OFFLINE_ORBIT = "/static/OrbitControls.js"
+
+
+def viewer_html(design: Design, offline: bool = False) -> str:
     return (_TEMPLATE.replace("__DATA__", _script_safe_json(mesh_data(design)))
-            .replace("__THREE__", THREE_URL).replace("__ORBIT__", ORBIT_URL)
+            .replace("__THREE__", OFFLINE_THREE if offline else THREE_URL).replace("__ORBIT__", OFFLINE_ORBIT if offline else ORBIT_URL)
             .replace("__TITLE__", design.name.replace("<", "").replace(">", "")))
 
 
@@ -253,9 +257,9 @@ def mode_data(model, results: dict) -> dict:
                 warnings=list(model.warnings))
 
 
-def mode_viewer_html(model, results: dict, title: str = "design") -> str:
+def mode_viewer_html(model, results: dict, title: str = "design", offline: bool = False) -> str:
     return (_MODE_TEMPLATE.replace("__DATA__", _script_safe_json(mode_data(model, results)))
-            .replace("__THREE__", THREE_URL).replace("__ORBIT__", ORBIT_URL)
+            .replace("__THREE__", OFFLINE_THREE if offline else THREE_URL).replace("__ORBIT__", OFFLINE_ORBIT if offline else ORBIT_URL)
             .replace("__TITLE__", title.replace("<", "").replace(">", "")))
 
 

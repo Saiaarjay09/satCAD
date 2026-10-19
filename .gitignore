@@ -5,3 +5,6 @@ __pycache__/
 cad_output/
 examples/output/
 output/
+build/
+dist/
+installer/

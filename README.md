@@ -24,6 +24,15 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 > capabilities, is in **[docs/NX_BENCHMARK.md](docs/NX_BENCHMARK.md)**; the plan to close the gap is in
 > **[docs/ROADMAP.md](docs/ROADMAP.md)**.
 
+## Quick start: SatCAD Studio (the app)
+
+Prefer a window to a command line? **SatCAD Studio** is an app for Mac and Windows: open it, add parts and variables, see the
+design in 3D, check it, run the vibration / stress analysis, and **open an existing design (`.json`) to improve it**. Download it from
+the **[Releases](https://github.com/Saiaarjay09/Open-source-CAD-software/releases)** page: a `.dmg` for Apple-silicon Macs, a
+`-setup.exe` installer for Windows. It runs on your own computer only. The apps are not code-signed, so the first launch shows a
+warning; [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) explains the two clicks needed. To run Studio from source instead:
+`.venv/bin/python -m satcad.studio`. How releases are built: see [section 13](#13-building-and-publishing-the-studio-app).
+
 ---
 
 ## Contents
@@ -42,6 +51,7 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 10. [Testing](#10-testing)
 11. [Troubleshooting](#11-troubleshooting)
 12. [Limits](#12-limits)
+13. [Building and publishing the Studio app](#13-building-and-publishing-the-studio-app)
 
 ---
 
@@ -91,7 +101,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`272 passed` and the path of the connector.
+`286 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -427,6 +437,8 @@ Open-source-CAD-software/
 ├── setup.sh                  one-time installer: environment + libraries + tests (+ optional Claude registration)
 ├── build_satellite.py        THE ORBITAL DATACENTRE: builds the whole satellite from variables at its top
 ├── orbital_datacentre_model.py  same as build_satellite.py under the name used in the original brief (it just runs it)
+├── studio_app.py             entry point of the SatCAD Studio app
+├── studio.spec / studio.iss  recipes that package Studio (PyInstaller) and make the Windows installer (Inno Setup)
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
 ├── requirements.txt          the Python libraries needed (build123d, mcp, matplotlib, numpy, scipy, pytest)
 ├── pytest.ini                test settings
@@ -440,6 +452,8 @@ Open-source-CAD-software/
 │   │                         No Claude code in here.
 │   ├── expressions.py        the safe formula interpreter behind variables and "=formulas"
 │   ├── viewer.py             writes the interactive 3D viewer (assembly tree, hinge sliders) and the animated mode-shape viewer
+│   ├── studio.py             SatCAD Studio: the local editor server (parts, variables, check, analyse, open/save/export)
+│   ├── static/               studio.html (the editor page) and the bundled three.js 3D library, so Studio works offline
 │   ├── fem.py                the shell finite-element solver (BETA): modal and static analysis of flat-plate structures
 │   ├── hardware.py           ISO metric tables: clearance holes, tap drills, counterbores, socket-head screw dimensions
 │   ├── materials.py          materials table (density, stiffness, strength, thermal data, colour, caveats) and role colours
@@ -464,10 +478,15 @@ Open-source-CAD-software/
 │   ├── test_materials.py     the materials database
 │   ├── test_fem.py           the FE solver against closed-form plate, membrane and vibration solutions
 │   ├── test_fem_design.py    CAD design to FE model: ties, supports, mass match, loose parts, reactions
+│   ├── test_studio.py        the Studio server: safety checks, add/edit, open/save round trip, export, analysis
 │   ├── test_server.py        launches the real server and talks to it like Claude does
 │   └── test_build_satellite.py  checks the satellite: subsystems, hinges and stowing, bolted optics, validation, analysis, command line
 │
+├── tools/smoke_test_app.py   starts a packaged Studio and proves it works (used by the build)
+├── .github/workflows/studio-release.yml   builds the Mac and Windows apps and publishes a release when a version tag is pushed
+│
 └── docs/
+    ├── RELEASE_NOTES.md                  the text shown on each GitHub release
     ├── NX_BENCHMARK.md                   line-by-line scoreboard against Siemens NX's publicly described capabilities
     ├── ROADMAP.md                        what SatCAD covers today vs professional CAD, and the plan to close the gap
     ├── example_orbital_node.png          the picture at the top of this README
@@ -640,7 +659,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-272 tests. They include:
+286 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
@@ -682,6 +701,20 @@ Read **[docs/ROADMAP.md](docs/ROADMAP.md)** for the full capability map and plan
   **no thermal-network or orbital analysis**; those are the next priorities.
 - **Not NX.** Section [docs/NX_BENCHMARK.md](docs/NX_BENCHMARK.md) lists, capability by capability, how far SatCAD is from Siemens NX.
 - **Not tested with Siemens NX** (no licence). STEP files are standard, but import behaviour is up to NX.
+
+## 13. Building and publishing the Studio app
+
+The app is the same Python code wrapped by [PyInstaller](https://pyinstaller.org) (`studio.spec`), so each system must be built **on that
+system**; GitHub does this for you:
+
+1. Commit your changes and push them to `main`.
+2. Tag a version and push the tag: `git tag v0.3.0 && git push origin v0.3.0`.
+3. The **Build SatCAD Studio** workflow (`.github/workflows/studio-release.yml`) runs on a Mac and a Windows machine, tests the packaged app by
+   actually starting it (`tools/smoke_test_app.py`), makes the `.dmg` and the Windows installer, and attaches both to a new Release.
+
+To build by hand on your own Mac: `.venv/bin/python -m pip install pyinstaller && .venv/bin/python -m PyInstaller --noconfirm studio.spec`
+gives `dist/SatCAD Studio.app`. To try the workflow without publishing, run it from the Actions tab (it keeps the files as downloadable
+artifacts). The apps are unsigned; code-signing needs an Apple Developer account (Mac) and a code-signing certificate (Windows).
 
 ## Licence
 
