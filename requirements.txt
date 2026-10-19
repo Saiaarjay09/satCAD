@@ -3,4 +3,6 @@ mcp>=1.9,<2
 matplotlib>=3.8
 numpy
 scipy
+sympy>=1.12
+pyqtgraph>=0.13
 pytest

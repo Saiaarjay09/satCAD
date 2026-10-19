@@ -49,6 +49,15 @@ def selftest() -> int:
         win = MainWindow(session, viewport_factory=Viewport)
         win.show()
         print("window ok", flush=True)
+        stage = "motion"
+        from .motion_expressions import ExpressionEngine
+        eng = ExpressionEngine()
+        eng.set_equations(["spin(t) = A * sin(2 * pi * f * t)"])
+        eng.set_param("A", 2.0)
+        assert eng.parameters == ["A", "f"] and abs(eng.velocity("spin", 0.0) - 4.0 * 3.141592653589793) < 1e-6, "motion expression engine"
+        from generate_orbital_node_assembly import build as build_alpha
+        assert len(build_alpha({"NUM_SERVER_BLADES": 2}).parts) > 200, "Orbital-Node-Alpha generator"
+        print("motion ok", flush=True)
         if os.environ.get("SATCAD_SELFTEST_RENDER") == "1":
             stage = "render"
             img = win.viewport.grab_image()
@@ -64,6 +73,10 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="satCAD desktop application")
     ap.add_argument("file", nargs="?", help="a saved part (.json) to open")
     ap.add_argument("--demo", action="store_true", help="start with a small example part")
+    ap.add_argument("--alpha", action="store_true", help="start with the Orbital-Node-Alpha satellite and its motion presets")
+    ap.add_argument("--seek", type=float, default=None, metavar="T", help="with --alpha: pose the model at time T seconds (used for screenshots)")
+    ap.add_argument("--zoom", type=float, default=None, metavar="F", help="with --alpha: zoom the 3D view by this factor (for screenshots)")
+    ap.add_argument("--hide", action="append", default=[], metavar="PART", help="hide a part by name at start (repeatable)")
     ap.add_argument("--screenshot", metavar="PNG", help="render the window to a PNG file and quit (for documentation)")
     ap.add_argument("--selftest", action="store_true", help="check that the installation works (kernel, Qt, VTK) and exit 0 or 1")
     args = ap.parse_args(argv)
@@ -83,13 +96,30 @@ def main(argv=None) -> int:
     win = MainWindow(session)
     if args.file:
         session.open(args.file)
+    elif args.alpha:
+        from generate_orbital_node_assembly import build
+        session.load_design(build())
     elif args.demo or args.screenshot:
         build_demo(session)
     win.show()
+    if args.alpha and win.motion is not None:
+        win.show_motion()
+        win.motion.load_alpha_presets()
+        for name in args.hide:
+            if name in win.navigator._items:
+                item = win.navigator._items[name]
+                from PySide6.QtCore import Qt as _Qt
+                item.setCheckState(0, _Qt.Unchecked)
+        if args.seek is not None:
+            win.motion.seek(args.seek)
+        if args.zoom:
+            win.viewport.zoom_by(args.zoom)
     if args.screenshot:
         def snap():
-            session.select(next(iter(session.design.features), None))       # show the Property Editor with a feature open
-            win.viewport.set_view("iso")
+            if not args.alpha:
+                session.select(next(iter(session.design.features), None))   # show the Property Editor with a feature open
+            if not args.alpha:
+                win.viewport.set_view("iso")
             for _ in range(3):
                 app.processEvents()                                       # let the panels lay themselves out before the grab
             win.save_screenshot(args.screenshot)

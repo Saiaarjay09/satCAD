@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 pytest.importorskip("PySide6")
-pytest.importorskip("vtk")
+pytest.importorskip("vtkmodules.vtkRenderingCore")      # not `import vtk`: the full package makes OpenCASCADE meshing ~9x slower
 from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
@@ -296,7 +296,7 @@ def test_main_window_wires_every_panel_together(viewport, tmp_path):
     session.message.emit("error", "boom")
     assert "boom" in win.info.toPlainText()
     ribbon_tabs = [win.ribbon.tabText(i) for i in range(win.ribbon.count())]
-    assert ribbon_tabs == ["Home", "Assemblies", "Simulate", "View"]
+    assert ribbon_tabs == ["Home", "Assemblies", "Simulate", "Motion", "View"]
     from PySide6.QtWidgets import QDockWidget
     assert {"Part Navigator", "Property Editor", "Information"} <= {d.windowTitle() for d in win.findChildren(QDockWidget)}
 

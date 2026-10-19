@@ -125,6 +125,8 @@ class Part:
     params: dict
     equipment: object = None                        # the volume the equipment mass is spread through (chassis interior)
     assembly: str | None = None                     # the assembly (subsystem) this part belongs to
+    translated_from: str | None = None              # linear-pattern copies: the source part, and the offset (lets viewers reuse its mesh)
+    translation: tuple | None = None
 
     @property
     def volume_mm3(self) -> float:
@@ -1034,6 +1036,9 @@ class Design:
                 fn = lambda s, i=i: s.rotate(Axis(Vector(p["cx"], p["cy"], p["cz"]), Vector(*direction)), step * i)
             self.parts[name] = self._derive(src, name, fn)
             self.parts[name].assembly = p.get("assembly") or src.assembly
+            if p["mode"] == "linear":
+                self.parts[name].translated_from = src.name
+                self.parts[name].translation = (i * p["dx"], i * p["dy"], i * p["dz"])
 
     def _build_mirror(self, f: Feature) -> None:
         p = f.params

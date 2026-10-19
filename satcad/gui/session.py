@@ -45,6 +45,7 @@ class Session(QObject):
     selection_changed = Signal(object)  # selected feature name, or None
     dirty_changed = Signal(bool)
     loaded = Signal()                   # a different part was opened or started (the view should re-frame it)
+    saving = Signal()                   # about to write the file: panels that keep extra data in it should update `extras` now
 
     def __init__(self, design: Design | None = None):
         super().__init__()
@@ -54,6 +55,7 @@ class Session(QObject):
         self._redo: list[dict] = []
         self._selected: str | None = None
         self._dirty = False
+        self.extras: dict = {}              # extra data saved with the part under its own keys (for example 'motion')
 
     # ---- state -------------------------------------------------------------------------------------------------------------------
     @property
@@ -186,6 +188,7 @@ class Session(QObject):
     def new(self, name: str = "untitled") -> None:
         self.design = Design(name)
         self.path, self._selected = None, None
+        self.extras = {}
         self._undo.clear()
         self._redo.clear()
         self._set_dirty(False)
@@ -194,17 +197,31 @@ class Session(QObject):
         self.changed.emit()
         self.message.emit("info", f"New part {name}")
 
+    def load_design(self, design: Design, message: str = "") -> None:
+        """Replace the open part with a design built elsewhere (for example the Orbital-Node-Alpha generator), as a new unsaved part."""
+        self.design, self.path, self._selected, self.extras = design, None, None, {}
+        self._undo.clear()
+        self._redo.clear()
+        self._set_dirty(False)
+        self.selection_changed.emit(None)
+        self.loaded.emit()
+        self.changed.emit()
+        self.message.emit("info", message or f"Loaded {design.name}: {len(design.features)} features, {len(design.parts)} bodies")
+
     def open(self, path) -> bool:
         path = Path(path)
+        extras = {}
         try:
             fresh = Design("untitled")
-            fresh.load_data(json.loads(path.read_text()))
+            raw = json.loads(path.read_text())
+            fresh.load_data(raw)
+            extras = {k: raw[k] for k in ("motion",) if isinstance(raw, dict) and k in raw}
         except (DesignError, ValueError, OSError, KeyError, TypeError) as e:
             self.message.emit("error", f"Couldn't open {path.name}: {e}")
             return False
         if not re.match(r"^[A-Za-z0-9_-]{1,40}$", fresh.name or ""):
             fresh.name = re.sub(r"[^A-Za-z0-9_-]", "_", str(fresh.name))[:40] or "untitled"
-        self.design, self.path, self._selected = fresh, path, None
+        self.design, self.path, self._selected, self.extras = fresh, path, None, extras
         self._undo.clear()
         self._redo.clear()
         self._set_dirty(False)
@@ -216,8 +233,12 @@ class Session(QObject):
 
     def save(self, path=None) -> bool:
         path = Path(path or self.path or f"{self.design.name}.json")
+        self.saving.emit()
         try:
-            self.design.save(path)
+            data = self.design.to_json()
+            data.update({k: v for k, v in self.extras.items() if v})
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data, indent=2))
         except OSError as e:
             self.message.emit("error", f"Couldn't save: {e}")
             return False

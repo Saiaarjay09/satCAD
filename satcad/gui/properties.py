@@ -229,9 +229,35 @@ class PropertyEditor(QWidget):
         for k, v in rows:
             form.addRow(k, QLabel(v))
         self._form_box.addWidget(box)
-        for role, kg in (m.get("mass_by_role_kg") or {}).items():
-            pass
+        self._model_parameters()
         self._form_box.addStretch(1)
+
+    def _model_parameters(self) -> None:
+        """The model's headline parameters (the UPPER_CASE variables): edit one and the whole assembly rebuilds."""
+        d = self.session.design
+        primary = [n for n in d.variables if n.isupper()]
+        if not primary:
+            return
+        values = d.list_variables()
+        box = QGroupBox("Model parameters")
+        form = QFormLayout(box)
+        for n in primary:
+            raw = values[n]["definition"]
+            form.addRow(QLabel(n.replace("_", " ").lower()), ExprEdit(show_value(raw), lambda text, n=n: self._set_parameter(n, text)))
+        self._form_box.addWidget(box)
+        tip = QLabel("Edit a number and the model rebuilds.")
+        tip.setStyleSheet("color:#9aa2ad")
+        self._form_box.addWidget(tip)
+
+    def _set_parameter(self, name: str, text: str) -> None:
+        try:
+            value = parse_value(text)
+        except ValueError as e:
+            self.session.message.emit("error", str(e))
+            self.refresh()
+            return
+        if value is None or not self.session.set_variable(name, value):
+            self.refresh()
 
 
 class ExpressionsEditor(QWidget):

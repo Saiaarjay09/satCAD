@@ -23,6 +23,8 @@ MOUSE (NX style, plus Mac trackpad alternatives)
 """
 from __future__ import annotations
 
+import time
+
 import numpy as np
 from PySide6.QtCore import QPointF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen
@@ -36,8 +38,9 @@ from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray,
 from vtkmodules.vtkCommonCore import vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.vtkFiltersCore import vtkPolyDataNormals
-from vtkmodules.vtkRenderingCore import (vtkActor, vtkCellPicker, vtkLightKit, vtkPolyDataMapper, vtkPropPicker, vtkRenderer, vtkRenderWindow,
-                                         vtkWindowToImageFilter)
+from vtkmodules.vtkCommonCore import vtkUnsignedCharArray
+from vtkmodules.vtkCommonMath import vtkMatrix4x4
+from vtkmodules.vtkRenderingCore import (vtkActor, vtkCellPicker, vtkLightKit, vtkPolyDataMapper, vtkPropPicker, vtkRenderer, vtkRenderWindow)
 
 from . import theme
 
@@ -144,26 +147,48 @@ def face_pick_info(part, face: dict, point) -> dict:
     return info
 
 
-def part_edges(part) -> vtkPolyData:
-    """The solid's true B-rep edges as polylines (straight edges as 2 points, curves sampled)."""
-    pts: list = []
-    lines = vtkCellArray()
+def part_edge_polylines(part) -> list:
+    """The solid's true B-rep edges as polylines (arrays of 3D points): straight edges are 2 points, curves are sampled."""
+    out = []
     for edge in part.solid.edges():
         if edge.geom_type == GeomType.LINE:
             samples = [edge.start_point(), edge.end_point()]
         else:
             n = int(min(96, max(12, edge.length / 4.0)))
             samples = [edge.position_at(t) for t in np.linspace(0.0, 1.0, n)]
-        base = len(pts)
-        pts.extend((s.X, s.Y, s.Z) for s in samples)
-        lines.InsertNextCell(len(samples), list(range(base, base + len(samples))))
+        out.append(np.array([(s.X, s.Y, s.Z) for s in samples], dtype=float))
+    return out
+
+
+def edges_polydata(polylines: list) -> vtkPolyData:
+    pts, lines = [], vtkCellArray()
+    base = 0
+    for poly_line in polylines:
+        pts.append(poly_line)
+        lines.InsertNextCell(len(poly_line), list(range(base, base + len(poly_line))))
+        base += len(poly_line)
     poly = vtkPolyData()
     vtk_pts = vtkPoints()
     if pts:
-        vtk_pts.SetData(numpy_to_vtk(np.array(pts, dtype=float), deep=True))
+        vtk_pts.SetData(numpy_to_vtk(np.vstack(pts), deep=True))
     poly.SetPoints(vtk_pts)
     poly.SetLines(lines)
     return poly
+
+
+def part_edges(part) -> vtkPolyData:
+    """The solid's true B-rep edges as a line mesh."""
+    return edges_polydata(part_edge_polylines(part))
+
+
+def _translated_faces(faces: list, d) -> list:
+    off = np.asarray(d, dtype=float)
+    return [dict(f, pts=f["pts"] + off, centre=tuple(np.asarray(f["centre"]) + off)) for f in faces]
+
+
+def _mesh_signature(part) -> tuple:
+    mn, mx = part.bbox()
+    return (part.kind, round(part.volume_mm3, 3), tuple(round(v, 3) for v in (*mn, *mx)))
 
 
 def _actor(poly: vtkPolyData, surface: bool) -> vtkActor:
@@ -218,6 +243,7 @@ class Viewport(QWidget):
         self._by_actor: dict[int, str] = {}
         self._faces: dict[str, list] = {}
         self._parts: dict[str, object] = {}
+        self._mesh_cache: dict = {}
         self._cell_picker = vtkCellPicker()
         self._cell_picker.SetTolerance(0.0005)
         self._face_actor: vtkActor | None = None
@@ -231,6 +257,12 @@ class Viewport(QWidget):
         self._frame: QImage | None = None
         self._dirty = True
         self._pending = False
+        self._pixels = None
+        self._ss = SUPERSAMPLE                       # supersampling factor (lowered while an animation plays)
+        self.last_frame_ms = 0.0
+        self._groups: dict[str, list] = {}           # motion group -> part names
+        self._group_matrix: dict[str, vtkMatrix4x4] = {}
+        self._color_override: dict[str, tuple] = {}
         self._empty_text = "Create a Block, Cylinder or Sphere from the Home tab"
 
     # ---- rendering -------------------------------------------------------------------------------------------------------------------
@@ -252,22 +284,21 @@ class Viewport(QWidget):
         return max(2, int(self.width() * ratio)), max(2, int(self.height() * ratio)), ratio
 
     def _render_frame(self) -> None:
+        t0 = time.perf_counter()
         w, h, ratio = self._pixel_size()
-        self.rw.SetSize(w * SUPERSAMPLE, h * SUPERSAMPLE)
+        self.rw.SetSize(w * self._ss, h * self._ss)
         self.rw.Render()
-        f = vtkWindowToImageFilter()
-        f.SetInput(self.rw)
-        f.SetInputBufferTypeToRGB()
-        f.ReadFrontBufferOff()
-        f.Update()
-        img = f.GetOutput()
-        iw, ih, _ = img.GetDimensions()
-        arr = vtk_to_numpy(img.GetPointData().GetScalars()).reshape(ih, iw, -1)[::-1, :, :3].copy()
+        iw, ih = w * self._ss, h * self._ss
+        if self._pixels is None:
+            self._pixels = vtkUnsignedCharArray()
+        self.rw.GetPixelData(0, 0, iw - 1, ih - 1, 0, self._pixels, 0)       # direct read-back: ~10x cheaper than vtkWindowToImageFilter
+        arr = vtk_to_numpy(self._pixels).reshape(ih, iw, -1)[::-1, :, :3].copy()
         big = QImage(arr.data, iw, ih, 3 * iw, QImage.Format_RGB888)
-        small = big.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation) if SUPERSAMPLE > 1 else big.copy()
+        small = big.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation) if self._ss > 1 else big.copy()
         small.setDevicePixelRatio(ratio)
         self._frame = small
         self._dirty = False
+        self.last_frame_ms = (time.perf_counter() - t0) * 1000.0
 
     def paintEvent(self, ev):
         if self._dirty or self._frame is None:
@@ -315,8 +346,10 @@ class Viewport(QWidget):
         self._faces, self._parts = {}, {}
         self.clear_face()
         self._hidden = set(hidden or ())
+        built: dict[str, tuple] = {}                 # this build's meshes, so linear-pattern copies can reuse their source's
         for name, part in design.parts.items():
-            faces = part_face_data(part)
+            faces, lines = self._mesh_for(part, built)
+            built[name] = (faces, lines)
             self._faces[name], self._parts[name] = faces, part
             surf = _actor(polydata_from_faces(faces), True)
             prop = surf.GetProperty()
@@ -326,9 +359,9 @@ class Viewport(QWidget):
             prop.SetDiffuse(0.78)
             prop.SetSpecular(0.35)
             prop.SetSpecularPower(35)
-            edges = _actor(part_edges(part), False)
+            edges = _actor(edges_polydata(lines), False)
             edges.GetProperty().SetColor(*theme.EDGE_COLOR)
-            edges.GetProperty().SetLineWidth(1.4 * SUPERSAMPLE)
+            edges.GetProperty().SetLineWidth(1.0 * self._ss)
             edges.GetProperty().LightingOff()
             edges.PickableOff()
             self.ren.AddActor(surf)
@@ -337,10 +370,32 @@ class Viewport(QWidget):
             self._base_color[name] = tuple(part.color)
             self._by_actor[id(surf)] = name
         self._selected = selected if selected in self._surfaces else None
+        self._rebind_groups()
         self._apply_state()
         if fit or (not self._have_fit and self._surfaces):
             self.set_view("iso")
         self.request_render()
+
+    def _mesh_for(self, part, built: dict):
+        """(face data, edge polylines) for a part, reusing work: a linear-pattern copy is its source's mesh moved by the pattern offset, and a
+        part unchanged since an earlier rebuild is served from a cache (so editing one feature does not re-mesh the whole assembly)."""
+        src = part.translated_from
+        if src in built and part.translation is not None and src in self._parts:
+            try:
+                same = abs(part.volume_mm3 - self._parts[src].volume_mm3) < 1e-6 * max(1.0, part.volume_mm3)
+            except Exception:
+                same = False
+            if same:
+                faces, lines = built[src]
+                return _translated_faces(faces, part.translation), [ln + np.asarray(part.translation) for ln in lines]
+        key = (part.name, _mesh_signature(part))
+        hit = self._mesh_cache.get(key)
+        if hit is None:
+            hit = (part_face_data(part), part_edge_polylines(part))
+            if len(self._mesh_cache) > 3000:
+                self._mesh_cache.clear()
+            self._mesh_cache[key] = hit
+        return hit
 
     def _apply_state(self) -> None:
         for name, surf in self._surfaces.items():
@@ -349,9 +404,9 @@ class Viewport(QWidget):
             surf.SetVisibility(visible and not wire)
             self._edges[name].SetVisibility(visible and self._mode != "shaded")
             sel = name == self._selected
-            surf.GetProperty().SetColor(*(theme.SELECT_COLOR if sel else self._base_color[name]))
+            surf.GetProperty().SetColor(*(theme.SELECT_COLOR if sel else self._color_override.get(name, self._base_color[name])))
             self._edges[name].GetProperty().SetColor(*((1.0, 0.85, 0.3) if sel else theme.EDGE_COLOR))
-            self._edges[name].GetProperty().SetLineWidth((2.6 if sel else 1.4) * SUPERSAMPLE)
+            self._edges[name].GetProperty().SetLineWidth((2.0 if sel else 1.0) * self._ss)     # whole pixels: fractional widths are ~5x slower
 
     def set_selected(self, name: str | None) -> None:
         self._selected = name if name in self._surfaces else None
@@ -368,6 +423,48 @@ class Viewport(QWidget):
         self._mode = mode if mode in ("shaded_edges", "shaded", "wireframe") else "shaded_edges"
         self._apply_state()
         self.request_render()
+
+    # ---- motion: move existing actors without re-meshing ----------------------------------------------------------------------------
+    def bind_motion_groups(self, groups: dict[str, list]) -> None:
+        """Declare which parts move together: {group id: [part names]}. Every actor of those parts shares ONE 4x4 matrix per group, so
+        moving a group later is a single matrix update, whatever the number of parts, and no mesh is rebuilt."""
+        self._groups = {g: list(parts) for g, parts in groups.items()}
+        self._rebind_groups()
+        self.request_render()
+
+    def _rebind_groups(self) -> None:
+        for actor in list(self._surfaces.values()) + list(self._edges.values()):
+            actor.SetUserMatrix(None)
+        self._group_matrix = {}
+        for g, parts in self._groups.items():
+            m = vtkMatrix4x4()
+            self._group_matrix[g] = m
+            for p in parts:
+                if p in self._surfaces:
+                    self._surfaces[p].SetUserMatrix(m)
+                    self._edges[p].SetUserMatrix(m)
+
+    def set_group_matrices(self, matrices: dict[str, np.ndarray]) -> None:
+        """Pose the groups: {group id: 4x4 world matrix}. Groups not listed keep their last pose."""
+        for g, arr in matrices.items():
+            m = self._group_matrix.get(g)
+            if m is not None:
+                m.DeepCopy(np.asarray(arr, dtype=float).ravel().tolist())
+        self.request_render()
+
+    def set_part_colors(self, colors: dict[str, tuple] | None) -> None:
+        """Override the display colour of some parts (an animation can colour them); None / {} restores the originals."""
+        self._color_override = dict(colors or {})
+        self._apply_state()
+        self.request_render()
+
+    def set_motion_quality(self, fast: bool) -> None:
+        """Fast mode renders without supersampling (used while an animation plays); the full-quality frame returns when it stops."""
+        ss = 1 if fast else SUPERSAMPLE
+        if ss != self._ss:
+            self._ss = ss
+            self._apply_state()
+            self.request_render()
 
     # ---- selection filter and face overlay -------------------------------------------------------------------------------------------
     def set_filter(self, mode: str) -> None:
@@ -405,8 +502,8 @@ class Viewport(QWidget):
     def pick_face(self, x: float, y: float):
         """(body name, face index, world point) under a widget position, or None."""
         _w, h, ratio = self._pixel_size()
-        px, py = int(x * ratio * SUPERSAMPLE), int((self.height() - y) * ratio * SUPERSAMPLE)
-        self.rw.SetSize(_w * SUPERSAMPLE, h * SUPERSAMPLE)
+        px, py = int(x * ratio * self._ss), int((self.height() - y) * ratio * self._ss)
+        self.rw.SetSize(_w * self._ss, h * self._ss)
         if not self._cell_picker.Pick(px, py, 0, self.ren):
             return None
         actor = self._cell_picker.GetActor()
@@ -496,8 +593,8 @@ class Viewport(QWidget):
     def pick(self, x: float, y: float) -> str | None:
         """Body under a widget position (device-independent pixels, origin top-left), or None."""
         _w, h, ratio = self._pixel_size()
-        px, py = int(x * ratio * SUPERSAMPLE), int((self.height() - y) * ratio * SUPERSAMPLE)
-        self.rw.SetSize(_w * SUPERSAMPLE, h * SUPERSAMPLE)
+        px, py = int(x * ratio * self._ss), int((self.height() - y) * ratio * self._ss)
+        self.rw.SetSize(_w * self._ss, h * self._ss)
         if self._picker.Pick(px, py, 0, self.ren):
             actor = self._picker.GetActor()
             if actor is not None:

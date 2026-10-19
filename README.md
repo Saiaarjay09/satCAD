@@ -80,6 +80,101 @@ stack; the desktop application does not use them.
 
 ---
 
+## Motion Studio: equations, joints and a timeline
+
+**Motion** tab on the ribbon. It combines a Desmos-style equation list with NX-Motion-style kinematic joints: type formulas of time, bind them to
+the assemblies of your model, and scrub or play the result in 3D with live plots next to it. The kinematics are rigid-body (positions, velocities,
+accelerations): there is no dynamics, no contact and no collision test while a mechanism moves.
+
+![Motion Studio on Orbital-Node-Alpha: equations with sliders, joints, timeline and live x / v / a plots](docs/motion_studio.png)
+
+*Orbital-Node-Alpha at t = 900 s with the bus hull hidden: solar wings turned 60 degrees by `theta_solar(t)`, radiators fully deployed, equations and plots on the right and below.*
+
+**Writing motion formulas.** Open **Motion > Equations**. One formula per line; time is `t` in seconds, angles are in **degrees** (but `sin`, `cos`
+take radians, exactly as in Desmos, so write `sin(2*pi*f*t)`), lengths in mm.
+
+```text
+theta_solar(t) = 360 * (t / 5400)                    a function of time: x(t)
+az_laser(t)    = A * sin(2 * pi * f * t)             A and f are never defined: sliders appear under the equation
+omega          = 2 * pi * 0.5                        a constant (no "(t)"): usable in the other formulas
+fold(t)        = 90 * smoothstep((t - 60) / 600)     an S-curve from 0 to 90 degrees between t = 60 s and 660 s
+coolant(t, k)  = 0.5 + 0.5 * sin(2*pi*(0.4*t - k/24))   a second argument k (a row index) for travelling waves
+```
+
+- **Auto sliders.** Any name you use but never define becomes a slider right under the equation (set its value exactly, or drag; the two end boxes
+  are editable and widen if you type outside them). Dragging re-poses the model immediately: no re-parsing, no re-meshing.
+- **Velocity and acceleration** come for free: SymPy differentiates your formula exactly, so the plots show x(t), v = dx/dt and a = d2x/dt2 for any function.
+  The status line under each equation shows the three values at the current time.
+- **Functions you can use:** `sin cos tan asin acos atan atan2 sinh cosh tanh exp log ln sqrt abs sign floor ceil mod min max`, the degree versions
+  `sind cosd tand`, the shapers `sigmoid(x)`, `smoothstep(x)` (0 below 0, 1 above 1, S-curve between), `smootherstep(x)`, `clamp(x, lo, hi)`, `step(x)`,
+  and the constants `pi` and `e`. Use `^` or `**` for powers and `*` for every multiplication. Formulas may refer to each other in any order; circular
+  definitions and typos are reported on the line they occur and never stop the other lines.
+- Formulas are parsed by SymPy in a restricted namespace (no attribute access, no double underscores, nothing but the functions above), then compiled to
+  NumPy (`lambdify`), about 2 microseconds per evaluation. (NumExpr is not used: compiled NumPy is already far below a frame's budget.)
+
+**Joints.** A joint moves one *assembly* (and every part and sub-assembly inside it) rigidly. Select an assembly in the Part Navigator, open
+**Motion > Joints** (or the ribbon's Revolute / Prismatic / Spherical buttons) and choose the driving equation. Axis and pivot are given in the model's
+home (drawn) pose, in mm.
+
+| Type | Degrees of freedom | Typical use |
+|---|---|---|
+| **Revolute** | one rotation about an axis through a pivot, driven by one equation (degrees) | hinges, solar-array drives, deployment |
+| **Prismatic** | one translation along an axis, driven by one equation (mm) | slides, boom extension |
+| **Spherical** | two rotations at a pivot: first about axis 1, then axis 2, each driven by its own equation | gimbals, mirror tip / tilt |
+
+Joints nest: an assembly inside a moving assembly is carried by it (an elevation stage rides on its azimuth stage), and the solver composes them
+automatically. An *offset* shifts the driven value (for example -90 when the model is drawn deployed and 0 should mean stowed); optional minimum and
+maximum clamp the travel. Each assembly can have one joint.
+
+**Timeline (bottom dock).** Play / Pause / Stop, Loop, speed from 0.1x to 10x, a time scrubber over [0, T max], and three synchronised plots of the
+selected function (position, velocity, acceleration) with a cursor that follows the current time and **can be dragged to scrub the 3D view**. Plot windows
+(whole timeline, +-300 s ... +-2 s around the cursor) let you zoom into fast oscillations.
+
+**How it stays smooth.** The solver only produces 4x4 matrices; the viewport applies them to the *existing* mesh actors (one shared matrix per joint),
+so nothing is re-tessellated while a mechanism moves, and while playing the viewport renders without supersampling. On the full Orbital-Node-Alpha model
+(405 bodies, 16 joints, 2 coolant-pulse colour animations) at 1480 x 900 the development Mac sustained about 61 frames per second with the docks open.
+(The rendering is VTK's with `GetPixelData` read-back; "SetLocation on an AIS context" is the OpenCASCADE-viewer equivalent of this, which satCAD does not use.)
+
+**Orbital-Node-Alpha presets** (Motion > Presets > *Alpha Motion*, or the sidebar's *Alpha presets*): four mechanisms written as plain equations you can edit.
+
+| Mechanism | Joint(s) | Equation (defaults are sliders) |
+|---|---|---|
+| Solar-array sun tracking `SADA_Revolute` | revolute about X, both wings | `theta_solar(t) = 360 * (t / T_orbit)`, T_orbit = 5400 s: one full turn per orbit |
+| Radiator wing deployment `Radiator_Fold_Hinge` | revolute about X at each wing root, offset -90 | `fold(t) = 90 * smoothstep((t - t_start) / t_deploy)`: 0 = stowed along -Z, 90 = deployed |
+| OISL turret PAT tracking `Turret_Gimbal` | per turret: azimuth (revolute, Z), elevation (revolute, X, riding on the azimuth stage), and a spherical fast steering mirror | `az_laser`, `el_laser` sinusoids; `fsm_tip/tilt = -k_fsm * (gimbal error) + A_jit * jitter`, a loop that partly cancels the gimbal motion |
+| Coolant flow pulse | colour wave along the 24 segments of the hot and cold manifolds | `coolant(t, k) = 0.5 + 0.5 * sin(2*pi*(f_flow*t - k/n_seg))`: a phase shift per segment |
+
+Motion setups are saved inside the part's `.json` (under `"motion"`) and restored when you open it. Joint axes and pivots in the presets are read from the
+model's own geometry, so they follow it when you change its parameters.
+
+## The Orbital-Node-Alpha assembly
+
+`generate_orbital_node_assembly.py` builds the detailed AI-datacentre satellite: six named sub-assemblies, 405 bodies, 9.5 t, no overlaps. In the app:
+**Assemblies > Orbital-Node-Alpha** (untick the bus hull in the Part Navigator to see the blades and coolant pipes). From the command line:
+
+```bash
+python generate_orbital_node_assembly.py --step alpha.step --json alpha.json --set NUM_SERVER_BLADES=12
+```
+
+Coordinates: origin at the centre of the bus; **Z** is the velocity vector (fore / aft), **Y** the anti-Sun axis (radiator wings), **X** the Sun-facing axis (solar wings).
+
+| Sub-assembly | Contents |
+|---|---|
+| `bus` | 2000 x 2000 x 3500 mm hull hollowed by a Boolean subtract (25 mm wall), inspection windows on +/-X, pipe ports, four I-beams, gold launch-adapter ring (OD 1575, ID 1450, 150 high, 5 mm bottom chamfer) |
+| `compute_rack` | 16 blades (1600 x 1200 x 60, 80 mm gaps) each with 8 silicon packages and a grooved copper cold plate |
+| `mpfl` | two pumps with mounting saddles, hot (+Y) and cold (-Y) manifolds in 24 segments, 10 mm feeder tubes to every plate, 3-way bypass valve with bypass pipes |
+| `radiators` | two wings (3000 x 12000 x 12) on 800 mm truss booms, root manifolds, 24 micro-tubes on each face, feed lines through the bus wall |
+| `solar_arrays` | SADA cylinders, Y-shaped yokes, three framed solar segments per side with 20 mm hinge gaps (15 m total span) |
+| `oisl_turrets` | four terminals (2 forward, 2 aft): azimuth base, U-yoke, hollow telescope barrel (OD 220, ID 190, 350 long), 45-degree fast steering mirror, lens, trunnion pins |
+
+Colours follow the specification (gold ring, dark-green PCBs, copper cold plates, steel pipes, white radiators, deep-blue solar cells, black turrets,
+cyan lenses) and are written into the **STEP** file by the export (AP214, `COLOUR_RGB`; every body is a named product, but the sub-assembly nesting is flattened into one list). The four headline numbers are model variables, shown in the Property Editor when
+nothing is selected: `NUM_SERVER_BLADES` (1 to 18), `RADIATOR_SPAN_MM`, `SOLAR_SPAN_MM`, `BUS_WALL_THICKNESS` (5 to 60 mm); change one and the assembly rebuilds
+(under a second after the first build). Two details of the brief were interpreted: "80 mm vertical spacing" for blades 60 mm thick is taken as an 80 mm *gap*
+(140 mm pitch, so 16 blades span +/-1080 mm of the +/-1200 mm range); and the stowed radiator position is along -Z (the launch axis), unfolding to +/-Y.
+
+---
+
 ## Contents
 
 1. [What you can do with it](#1-what-you-can-do-with-it)
@@ -146,7 +241,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`315 passed` and the path of the connector.
+`375 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -484,6 +579,7 @@ Open-source-CAD-software/
 ├── orbital_datacentre_model.py  same as build_satellite.py under the name used in the original brief (it just runs it)
 ├── main.py                   starts the desktop application (Qt + VTK):  python main.py
 ├── requirements-gui.txt      the extra libraries for the desktop application (PySide6, vtk)
+├── generate_orbital_node_assembly.py   builds the detailed Orbital-Node-Alpha satellite (6 sub-assemblies, 405 bodies, STEP export)
 ├── studio_app.py             entry point of the SatCAD Studio app
 ├── studio.spec / studio.iss  recipes that package Studio (PyInstaller) and make the Windows installer (Inno Setup)
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
@@ -508,6 +604,11 @@ Open-source-CAD-software/
 │   │   ├── properties.py     the Property Editor and Expressions list
 │   │   ├── commands.py       ribbon commands and their dialogs (Boolean, Edge Blend, Hole, Shell, analysis, export)
 │   │   ├── session.py        the open document: wraps the engine, undo / redo, change signals
+│   │   ├── kinematics_solver.py  joints (revolute / prismatic / spherical), nested chains and 4x4 transforms: pure NumPy
+│   │   ├── motion_expressions.py the SymPy equation engine and the Motion Expressions sidebar (auto sliders, joints tab)
+│   │   ├── motion_timeline_dock.py  Play / scrub / speed controls and the x(t), v(t), a(t) plots
+│   │   ├── motion_studio.py  the controller: clock, solver, viewport, saving
+│   │   ├── motion_presets.py the four Orbital-Node-Alpha mechanisms
 │   │   ├── theme.py          the dark theme
 │   │   └── icons.py          icons drawn in code (no image files)
 │   ├── studio.py             SatCAD Studio: the local editor server (parts, variables, check, analyse, open/save/export)
@@ -536,6 +637,8 @@ Open-source-CAD-software/
 │   ├── test_materials.py     the materials database
 │   ├── test_fem.py           the FE solver against closed-form plate, membrane and vibration solutions
 │   ├── test_fem_design.py    CAD design to FE model: ties, supports, mass match, loose parts, reactions
+│   ├── test_motion.py        Motion Studio: expressions, solver, presets, playback, docks
+│   ├── test_orbital_node_assembly.py  the Alpha generator: structure, parameters, geometry, colours, STEP
 │   ├── test_gui.py           the desktop application, headless: session / undo, navigator, property editor, viewport geometry, camera and mouse, window wiring
 │   ├── test_studio.py        the Studio server: safety checks, add/edit, open/save round trip, export, analysis
 │   ├── test_server.py        launches the real server and talks to it like Claude does
@@ -720,7 +823,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-315 tests. They include:
+375 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.

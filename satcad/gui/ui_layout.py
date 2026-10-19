@@ -20,6 +20,9 @@ from PySide6.QtWidgets import (QDockWidget, QLabel, QMainWindow, QMessageBox, QT
 
 from .commands import Commands
 from .icons import icon
+from .motion_expressions import MotionExpressionsDock
+from .motion_studio import MotionStudio
+from .motion_timeline_dock import MotionTimelineDock
 from .navigator import PartNavigator
 from .properties import RightDock
 from .ribbon import Ribbon
@@ -109,6 +112,20 @@ class MainWindow(QMainWindow):
         self.resizeDocks([bottom], [150], Qt.Vertical)
         self.resizeDocks([left, right], [270, 340], Qt.Horizontal)
 
+        # ---- Motion Studio docks (hidden until used) ----------------------------------------------------------------------------------------
+        self.motion = MotionStudio(self.session, self.viewport) if hasattr(self.viewport, "bind_motion_groups") else None
+        self.motion_dock = self.timeline_dock = None
+        if self.motion is not None:
+            self.motion_dock = MotionExpressionsDock(self.motion, self)
+            self.addDockWidget(Qt.RightDockWidgetArea, self.motion_dock)
+            self.tabifyDockWidget(right, self.motion_dock)
+            self.motion_dock.hide()
+            self.timeline_dock = MotionTimelineDock(self.motion, self)
+            self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
+            self.tabifyDockWidget(bottom, self.timeline_dock)
+            self.timeline_dock.hide()
+        self._right_dock = right
+
         # ---- status bar ------------------------------------------------------------------------------------------------------------------
         self.cue = QLabel("Select a body, or pick a command from the ribbon")
         self.sel_label = QLabel("")
@@ -162,6 +179,8 @@ class MainWindow(QMainWindow):
         asm = r.add_tab("Assemblies")
         g = asm.add_group("Structure")
         g.add_button("New Assembly", "assembly", c.assembly, "A group of parts, optionally on a hinge")
+        g = asm.add_group("Models")
+        g.add_button("Orbital-Node-Alpha", "assembly", c.load_alpha_model, "Build the detailed Orbital-Node-Alpha satellite (6 sub-assemblies, 400+ bodies)")
         g = asm.add_group("Analysis")
         g.add_button("Interference", "check", c.check, "Find overlapping or floating bodies")
         g.add_button("Mass Properties", "mass", c.mass_properties, "Mass, centre of mass and inertia of the whole part")
@@ -170,6 +189,9 @@ class MainWindow(QMainWindow):
         g = sim.add_group("Structural (BETA)")
         g.add_button("Modal", "modal", c.modal, "Vibration modes with animated shapes")
         g.add_button("Static", "static", c.static, "Stress and deflection under g-loads")
+        g = sim.add_group("Motion")
+        g.add_button("Motion Studio", "modal", self.show_motion, "Open the Motion Studio sidebar and timeline")
+        g.add_button("Play", "static", self.toggle_play, "Play or pause the animation")
         g = sim.add_group("Report")
         g.add_button("Mass Properties", "mass", c.mass_properties)
         g.add_button("Interference", "check", c.check)
@@ -177,6 +199,23 @@ class MainWindow(QMainWindow):
         g.add_button("STEP", "export", lambda: c.export("step"), "Export for other CAD programs")
         g.add_button("STL", "export", lambda: c.export("stl"), "Mesh for 3D printing")
         g.add_button("GLB", "export", lambda: c.export("glb"), "Web / AR viewers")
+
+        mo = r.add_tab("Motion")
+        g = mo.add_group("Motion Studio")
+        g.add_button("Studio", "modal", self.show_motion, "Show the Motion Expressions sidebar and the timeline")
+        g.add_button("Equations", "expr", lambda: self._show_dock(self.motion_dock), "Desmos-style equations of time, with auto sliders")
+        g.add_button("Timeline", "modal", lambda: self._show_dock(self.timeline_dock), "Play, scrub and plot x(t), v(t), a(t)")
+        g = mo.add_group("Playback")
+        g.add_button("Play / Pause", "static", self.toggle_play, "Play or pause the animation")
+        g.add_button("Stop", "delete", lambda: self.motion and self.motion.stop(), "Stop and return to t = 0")
+        g.add_button("Home pose", "fit", lambda: self.motion and self.motion.reset_pose(), "Show the model in its drawn pose (motion setup is kept)")
+        g = mo.add_group("Joints")
+        g.add_button("Revolute", "hinge", lambda: self.add_joint("revolute"), "Hinge: rotate an assembly about an axis through a pivot")
+        g.add_button("Prismatic", "extrude", lambda: self.add_joint("prismatic"), "Slider: translate an assembly along an axis")
+        g.add_button("Spherical", "sphere", lambda: self.add_joint("spherical"), "Gimbal: two rotations (pitch / yaw) about a pivot")
+        g = mo.add_group("Presets")
+        g.add_button("Alpha Motion", "assembly", self.alpha_motion, "Solar tracking, radiator fold, laser turrets with FSM, coolant pulse")
+        g.add_button("Clear", "delete", lambda: self.motion and self.motion.clear(), "Remove all equations, joints and pulses")
 
         view = r.add_tab("View")
         g = view.add_group("Orient")
@@ -271,6 +310,44 @@ class MainWindow(QMainWindow):
             v.context_requested.connect(self._viewport_menu)
         if hasattr(v, "face_clicked"):
             v.face_clicked.connect(self._on_face)
+
+    # ---- Motion Studio ---------------------------------------------------------------------------------------------------------------
+    def _show_dock(self, dock) -> None:
+        if dock is not None:
+            dock.show()
+            dock.raise_()
+
+    def show_motion(self) -> None:
+        self._show_dock(self.motion_dock)
+        self._show_dock(self.timeline_dock)
+
+    def toggle_play(self) -> None:
+        if self.motion is None:
+            return
+        self.show_motion()
+        self.motion.pause() if self.motion.playing else self.motion.play()
+
+    def add_joint(self, kind: str) -> None:
+        if self.motion is None:
+            return
+        self.show_motion()
+        self.motion_dock.joints.add(kind)
+
+    def alpha_motion(self) -> None:
+        """Load the four Orbital-Node-Alpha mechanisms, building the Alpha model first if the open part is something else."""
+        if self.motion is None:
+            return
+        from .motion_presets import alpha_presets
+        if not alpha_presets(self.session.design).joints:
+            ask = QMessageBox.question(self, "Orbital-Node-Alpha", "The open part is not Orbital-Node-Alpha. Replace it with the Alpha model and load its motion?",
+                                       QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Yes)
+            if ask != QMessageBox.Yes:
+                return
+            self.commands.load_alpha_model()
+            if "bus_hull" not in self.session.design.parts:
+                return
+        self.show_motion()
+        self.motion.load_alpha_presets()
 
     def set_filter(self, mode: str) -> None:
         """Selection filter: 'body' or 'face'."""

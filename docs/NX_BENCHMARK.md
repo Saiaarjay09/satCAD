@@ -42,6 +42,7 @@ problems only · **No** = not there · **Ahead** = SatCAD does something NX does
 | Product structure, sub-assemblies | Yes | Nested assemblies with rolled-up mass, centre of mass, inertia | Parity-ish | No large-assembly performance work |
 | Mating constraints | Full constraint set | Placement + attach-to-face; no general mates | Partial | |
 | Joints / articulation | Motion simulation | Hinge joints with angle formulas and limits; parts, mass properties and checks follow the pose; interactive sliders in the viewer | Partial | Revolute only; no kinematic solver, loops, or dynamics |
+| Motion (kinematics) | NX Motion / Simcenter Motion: joints, drivers, dynamics, contact | Motion Studio: revolute / prismatic / spherical joints driven by symbolic equations of time, nested chains, timeline with x, v, a plots, colour animations | Partial | Kinematics only: no dynamics, contact, force or collision analysis |
 | Interference checking | Yes, clash detection | Exact solid intersection, floating-part check, thread-engagement awareness | Parity-ish | |
 | Mass, centre of mass, inertia | Yes | Exact from solids, per assembly; verified against closed-form solutions | Parity-ish | Equipment is idealised blocks |
 | Materials database | Yes, with vendor data | 10 materials with density, E, nu, yield, CTE, conductivity (typical values, caveats shown) | Partial | Not certified allowables |
