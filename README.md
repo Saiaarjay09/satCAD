@@ -426,6 +426,7 @@ Open-source-CAD-software/
 ├── README.md                 this guide
 ├── setup.sh                  one-time installer: environment + libraries + tests (+ optional Claude registration)
 ├── build_satellite.py        THE ORBITAL DATACENTRE: builds the whole satellite from variables at its top
+├── orbital_datacentre_model.py  same as build_satellite.py under the name used in the original brief (it just runs it)
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
 ├── requirements.txt          the Python libraries needed (build123d, mcp, matplotlib, numpy, scipy, pytest)
 ├── pytest.ini                test settings
