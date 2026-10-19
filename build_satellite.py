@@ -12,14 +12,21 @@ Builds a 3D model of a space-based AI compute node out of four subsystems:
 HOW TO RUN (from this folder, with the virtual environment active):
 
     python build_satellite.py                 build it, write the files, print a design report
-    python build_satellite.py --view          ...and open the 4-view picture afterwards
+    python build_satellite.py --view          ...and open the interactive 3D viewer afterwards
     python build_satellite.py --set RADIATOR_WINGSPAN=30000 --name wide_radiators
                                               try a different size without editing the file
 
-OUTPUT (in ./output/<name>/):  <name>.png (4 views)  <name>_core_detail.png (blades + lasers, shell hidden)
-                               .step  .stl  .glb  .json (editable recipe)  _report.txt
+OUTPUT (in ./output/<name>/):
+    <name>_viewer.html          interactive 3D model: orbit, zoom, click parts, hide parts, explode
+    <name>.png                  4 views            <name>_core_detail.png   blades + lasers, shell hidden
+    <name>.step .stl .glb       CAD / mesh files   <name>.json              the editable recipe (variables + formulas)
+    <name>_bom.csv              bill of materials  <name>_report.txt        the design report
 
-All dimensions are MILLIMETRES, masses are KILOGRAMS.  Axes:  X = front (+) / rear (-),  Y = left (+) / right (-),
+Every number in the block below becomes a NAMED VARIABLE inside the model (lower-case: chassis_length, radiator_wingspan ...)
+and the shapes are built from formulas that use them. So the saved .json is fully parametric: load it with the Claude
+connector and use set_variable("radiator_wingspan", 30000) and the whole satellite rebuilds.
+
+All dimensions are MILLIMETRES, masses are KILOGRAMS. Axes:  X = front (+) / rear (-),  Y = left (+) / right (-),
 Z = top (+) / bottom (-).  The sun is assumed to lie along +Y.
 """
 
@@ -32,7 +39,8 @@ CHASSIS_LENGTH = 6000        # mm, front to back (X)
 CHASSIS_WIDTH = 2400         # mm, left to right (Y)
 CHASSIS_HEIGHT = 2400        # mm, bottom to top (Z)
 CHASSIS_WALL = 15            # mm, thickness of the structural wall (hollow inside)
-PLUMBING_MASS_KG = 1500      # kg, pumps, coolant and pipework inside (not modelled shape-by-shape)
+CHASSIS_EDGE_RADIUS = 25     # mm, rounding of the chassis edges (0 = sharp edges)
+PLUMBING_MASS_KG = 1500      # kg, pumps, coolant and pipework inside (spread through the interior; not drawn)
 
 # --- 1b. COMPUTE BLADES inside the chassis (stand-in blocks, so the mass is counted) ----------------------
 BLADE_COUNT = 12             # number of blades in the row
@@ -52,6 +60,7 @@ TRANSCEIVER_RADIUS = 250     # mm, radius of each telescope barrel (the optics a
 TRANSCEIVER_LENGTH = 800     # mm, length of each telescope barrel
 GIMBAL_RADIUS_FACTOR = 1.4   # gimbal housing radius = this x telescope radius (holds the steering mechanism)
 GIMBAL_LENGTH = 300          # mm, length of the gimbal housing between the chassis and the telescope
+OISL_PORT_FACTOR = 0.8       # optical feed-through hole in the chassis wall = this x telescope diameter
 
 # --- 4. SOLAR ARRAYS: two wings on the +Z / -Z faces, flat in the X-Z plane (perpendicular to the radiators) --
 SOLAR_WING_LENGTH = 14000    # mm, how far each wing reaches out from the chassis (Z)
@@ -75,6 +84,7 @@ import argparse
 import platform
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -84,6 +94,7 @@ from satcad import Design, DesignError                 # noqa: E402  (the design
 from satcad.power import size_solar_array               # noqa: E402
 from satcad.render import render_png                    # noqa: E402
 from satcad.thermal import STEFAN_BOLTZMANN             # noqa: E402
+from satcad.viewer import write_viewer                  # noqa: E402
 
 
 # ==========================================================================================================
@@ -94,11 +105,13 @@ def validate(p: dict) -> None:
     for key, value in p.items():
         if key == "RADIATOR_TILT_DEG" or not isinstance(value, (int, float)):
             continue
-        zero_ok = key in ("BLADE_SIDE_CLEARANCE", "PLUMBING_MASS_KG")          # these may be 0, but not negative
+        zero_ok = key in ("BLADE_SIDE_CLEARANCE", "PLUMBING_MASS_KG", "CHASSIS_EDGE_RADIUS")   # may be 0, but not negative
         if value < 0 or (value == 0 and not zero_ok):
             raise DesignError(f"{key} must be {'0 or more' if zero_ok else 'greater than 0'} (you gave {value}).")
     if p["CHASSIS_WALL"] * 2 >= min(p["CHASSIS_LENGTH"], p["CHASSIS_WIDTH"], p["CHASSIS_HEIGHT"]):
         raise DesignError("CHASSIS_WALL is too thick: twice the wall must be smaller than every chassis dimension.")
+    if p["CHASSIS_EDGE_RADIUS"] * 2 >= min(p["CHASSIS_LENGTH"], p["CHASSIS_WIDTH"], p["CHASSIS_HEIGHT"]):
+        raise DesignError("CHASSIS_EDGE_RADIUS is too large for the chassis size.")
     if p["RADIATOR_WINGSPAN"] <= p["CHASSIS_WIDTH"]:
         raise DesignError(f"RADIATOR_WINGSPAN ({p['RADIATOR_WINGSPAN']}) is the tip-to-tip span, so it must be bigger "
                           f"than CHASSIS_WIDTH ({p['CHASSIS_WIDTH']}), otherwise the panels have no length.")
@@ -120,30 +133,44 @@ def validate(p: dict) -> None:
                           "or GIMBAL_RADIUS_FACTOR.")
     if p["GIMBAL_RADIUS_FACTOR"] < 1:
         raise DesignError("GIMBAL_RADIUS_FACTOR must be 1 or more (the gimbal housing is at least as wide as the telescope).")
+    if p["OISL_PORT_FACTOR"] > p["GIMBAL_RADIUS_FACTOR"] * 2:
+        raise DesignError("OISL_PORT_FACTOR is too large: the feed-through hole would be wider than the gimbal housing.")
+
+
+def new_design(name: str, p: dict) -> Design:
+    """An empty design that already holds every number from the block above as a NAMED VARIABLE (lower-case)."""
+    d = Design(name)
+    for key, value in p.items():
+        d.set_variable(key.lower(), value)
+    return d
 
 
 # ==========================================================================================================
 #  SUBSYSTEM 1: CHASSIS  (hollow core + compute blades)
+#  Shapes are written as FORMULAS ("=chassis_length") that read the variables, so editing a variable rebuilds them.
 # ==========================================================================================================
 def add_chassis(d: Design, p: dict) -> None:
-    # The core: a hollow aluminium box. "wall" makes it a shell; internal_mass_kg adds the pumps/coolant mass.
-    d.add("chassis", "chassis",
-          length=p["CHASSIS_LENGTH"], width=p["CHASSIS_WIDTH"], height=p["CHASSIS_HEIGHT"],
-          wall=p["CHASSIS_WALL"], internal_mass_kg=p["PLUMBING_MASS_KG"], material="aluminum_6061")
+    # The core: a hollow aluminium box with rounded edges. "wall" makes it a shell; internal_mass_kg is the pumps/coolant
+    # mass, spread through the interior when the inertia is computed.
+    d.add("chassis", "chassis", length="=chassis_length", width="=chassis_width", height="=chassis_height",
+          wall="=chassis_wall", fillet="=chassis_edge_radius", internal_mass_kg="=plumbing_mass_kg", material="aluminum_6061")
+    # Optical feed-throughs: a round hole through the wall under each laser terminal, so the beam path reaches the optics bench.
+    for sign, end in (("+", "front"), ("-", "rear")):
+        d.add("cutout", f"oisl_{end}_port", target="chassis", side=f"{sign}x", shape="circle",
+              diameter="=oisl_port_factor * transceiver_radius * 2", depth="=chassis_wall")
 
 
 def add_blades(d: Design, p: dict) -> None:
-    """The compute blades: a row of upright slabs standing on the inside floor and centred along X.
-    (Because they rest on the floor they touch the chassis, so the "floating parts" check stays quiet.)"""
-    wall = p["CHASSIS_WALL"]
-    blade_width = p["CHASSIS_WIDTH"] - 2 * wall - 2 * p["BLADE_SIDE_CLEARANCE"]
-    floor_z = -p["CHASSIS_HEIGHT"] / 2 + wall
-    for i in range(p["BLADE_COUNT"]):
-        x = (i - (p["BLADE_COUNT"] - 1) / 2) * p["BLADE_PITCH"]
-        d.add("box", f"compute_blade_{i + 1:02d}",
-              length=p["BLADE_THICKNESS"], width=blade_width, height=p["BLADE_HEIGHT"],
-              x=x, y=0, z=floor_z + p["BLADE_HEIGHT"] / 2,
-              material="generic_equipment", role="payload")
+    """The compute blades: upright slabs standing on the inside floor, in a row centred along X. We model the first blade
+    and repeat it with a PATTERN. (Because they rest on the floor they touch the chassis, so the 'floating parts' check
+    stays quiet.)"""
+    d.add("box", "compute_blade_1", length="=blade_thickness",
+          width="=chassis_width - 2 * chassis_wall - 2 * blade_side_clearance", height="=blade_height",
+          x="=-(blade_count - 1) / 2 * blade_pitch", y=0, z="=-chassis_height / 2 + chassis_wall + blade_height / 2",
+          material="generic_equipment", role="payload")
+    if p["BLADE_COUNT"] > 1:
+        # copies are named compute_blade_2 ... compute_blade_<count>
+        d.add("pattern", "compute_blade", source="compute_blade_1", mode="linear", count="=blade_count", dx="=blade_pitch")
 
 
 # ==========================================================================================================
@@ -151,31 +178,28 @@ def add_blades(d: Design, p: dict) -> None:
 # ==========================================================================================================
 def add_radiators(d: Design, p: dict) -> None:
     # WINGSPAN is tip to tip, so each panel only needs to cover the distance from the chassis wall to the tip.
-    panel_length = (p["RADIATOR_WINGSPAN"] - p["CHASSIS_WIDTH"]) / 2
-    # side "+y" / "-y": the panel sticks out of the left / right face. The thin direction defaults to Z, so the panel
-    # lies flat in the X-Y plane. attach_to makes it follow the chassis if the chassis is resized.
-    d.add("panel", "radiator_left", attach_to="chassis", side="+y", length=panel_length, width=p["RADIATOR_CHORD"],
-          thickness=p["RADIATOR_THICKNESS"], tilt_deg=p["RADIATOR_TILT_DEG"],
+    # side "+y": the panel sticks out of the left face. The thin direction defaults to Z, so the panel lies flat in the
+    # X-Y plane. attach_to makes it follow the chassis if the chassis is resized.
+    d.add("panel", "radiator_left", attach_to="chassis", side="+y", length="=(radiator_wingspan - chassis.width) / 2",
+          width="=radiator_chord", thickness="=radiator_thickness", tilt_deg="=radiator_tilt_deg",
           material="aluminum_honeycomb", role="radiator")
-    d.add("panel", "radiator_right", attach_to="chassis", side="-y", length=panel_length, width=p["RADIATOR_CHORD"],
-          thickness=p["RADIATOR_THICKNESS"], tilt_deg=-p["RADIATOR_TILT_DEG"],     # mirrored so the pair stays symmetric
-          material="aluminum_honeycomb", role="radiator")
+    # The right radiator is a true MIRROR of the left one across the XZ plane, so the pair can never drift out of symmetry.
+    d.add("mirror", "radiator_right", source="radiator_left", plane="zx")
 
 
 # ==========================================================================================================
 #  SUBSYSTEM 3: OPTICAL INTER-SATELLITE LINKS (OISL)  (a gimbal plus a telescope barrel, front and rear)
 # ==========================================================================================================
 def add_oisl(d: Design, p: dict) -> None:
-    half = p["CHASSIS_LENGTH"] / 2
-    for sign, end in ((+1, "front"), (-1, "rear")):
-        # Gimbal housing: sits directly on the chassis face (holds the pointing mechanism and Fast Steering Mirror).
-        d.add("cylinder", f"oisl_{end}_gimbal", radius=p["TRANSCEIVER_RADIUS"] * p["GIMBAL_RADIUS_FACTOR"],
-              height=p["GIMBAL_LENGTH"], axis="x", x=sign * (half + p["GIMBAL_LENGTH"] / 2), y=0, z=0,
-              material="titanium_ti6al4v", role="structure")
-        # Telescope barrel: the laser optics, pointing away from the satellite along +X (front) or -X (rear).
-        d.add("cylinder", f"oisl_{end}_telescope", radius=p["TRANSCEIVER_RADIUS"], height=p["TRANSCEIVER_LENGTH"],
-              axis="x", x=sign * (half + p["GIMBAL_LENGTH"] + p["TRANSCEIVER_LENGTH"] / 2), y=0, z=0,
-              material="cfrp", role="antenna")
+    # Gimbal housing: sits directly on the chassis front face (holds the pointing mechanism and Fast Steering Mirror).
+    d.add("cylinder", "oisl_front_gimbal", radius="=transceiver_radius * gimbal_radius_factor", height="=gimbal_length",
+          axis="x", x="=chassis_length / 2 + gimbal_length / 2", y=0, z=0, material="titanium_ti6al4v", role="structure")
+    # Telescope barrel: the laser optics, pointing away from the satellite along +X.
+    d.add("cylinder", "oisl_front_telescope", radius="=transceiver_radius", height="=transceiver_length", axis="x",
+          x="=chassis_length / 2 + gimbal_length + transceiver_length / 2", y=0, z=0, material="cfrp", role="antenna")
+    # The rear terminal is the front one mirrored across the YZ plane.
+    d.add("mirror", "oisl_rear_gimbal", source="oisl_front_gimbal", plane="yz")
+    d.add("mirror", "oisl_rear_telescope", source="oisl_front_telescope", plane="yz")
 
 
 # ==========================================================================================================
@@ -185,9 +209,9 @@ def add_solar_arrays(d: Design, p: dict) -> None:
     # Radiators lie in the X-Y plane (thin in Z). The solar wings lie in the X-Z plane (thin in Y, via thin_axis="y").
     # Planes at right angles = "perpendicular". The big solar faces look along Y toward the sun, and the radiators sit
     # edge-on to the sun, so they neither shade the arrays nor bake in direct sunlight.
-    for side, name in (("+z", "solar_wing_top"), ("-z", "solar_wing_bottom")):
-        d.add("panel", name, attach_to="chassis", side=side, length=p["SOLAR_WING_LENGTH"], width=p["SOLAR_WING_WIDTH"],
-              thickness=p["SOLAR_THICKNESS"], thin_axis="y", material="aluminum_honeycomb", role="solar")
+    d.add("panel", "solar_wing_top", attach_to="chassis", side="+z", length="=solar_wing_length", width="=solar_wing_width",
+          thickness="=solar_thickness", thin_axis="y", material="aluminum_honeycomb", role="solar")
+    d.add("mirror", "solar_wing_bottom", source="solar_wing_top", plane="xy")          # the bottom wing mirrors the top one
 
 
 # ==========================================================================================================
@@ -197,7 +221,7 @@ def build_core_detail(overrides: dict | None = None, name: str = "orbital_datace
     """A cut-away view for the picture only: the compute blades and optical terminals with the chassis shell hidden."""
     p = {**PARAMS, **(overrides or {})}
     validate(p)
-    d = Design(name)
+    d = new_design(name, p)
     add_blades(d, p)
     add_oisl(d, p)
     return d
@@ -207,7 +231,7 @@ def build(overrides: dict | None = None, name: str = "orbital_datacentre") -> De
     """Build the satellite. `overrides` replaces any of the variables at the top, e.g. {"RADIATOR_WINGSPAN": 30000}."""
     p = {**PARAMS, **(overrides or {})}
     validate(p)
-    d = Design(name)
+    d = new_design(name, p)
     add_chassis(d, p)
     add_blades(d, p)
     add_radiators(d, p)
@@ -239,14 +263,26 @@ def report(d: Design, overrides: dict | None = None) -> tuple[str, dict]:
     meas, check = d.measure(), d.check()
     area_ratio = rad_area_one_face / chassis_plan
     balance = reject_kw / power_kw if power_kw else 0
+    mom = meas["principal_moments_kg_m2"]
     facts = dict(radiator_area_m2=rad_area_one_face, chassis_plan_m2=chassis_plan, chassis_surface_m2=chassis_surface,
                  radiator_to_chassis_plan_ratio=area_ratio, heat_rejection_kw=reject_kw, solar_area_m2=solar_area,
-                 solar_power_kw=power_kw, heat_balance=balance, mass_kg=meas["total_mass_kg"], check_ok=check["ok"])
+                 solar_power_kw=power_kw, heat_balance=balance, mass_kg=meas["total_mass_kg"], check_ok=check["ok"],
+                 principal_moments_kg_m2=mom, centre_of_mass_mm=meas["centre_of_mass_mm"],
+                 inertia_kg_m2=meas["inertia_kg_m2"])
 
+    i = meas["inertia_kg_m2"]
     lines = [f"DESIGN REPORT: {d.name}", "=" * 64,
              "Parts: " + str(meas["parts"]) + "   Total mass: " + f"{meas['total_mass_kg']:,.0f} kg",
              "Overall size: " + " x ".join(f"{v / 1000:.1f}" for v in meas["overall_size_mm"]) + " m  (X x Y x Z)",
              "Mass by role (kg): " + ", ".join(f"{k} {v:,.0f}" for k, v in meas["mass_by_role_kg"].items()),
+             "",
+             "MASS PROPERTIES (about the centre of mass; from the real solids)",
+             f"  Centre of mass: ({meas['centre_of_mass_mm'][0] / 1000:.3f}, {meas['centre_of_mass_mm'][1] / 1000:.3f}, "
+             f"{meas['centre_of_mass_mm'][2] / 1000:.3f}) m from the origin",
+             f"  Inertia tensor (kg m2): Ixx {i[0][0]:,.0f}  Iyy {i[1][1]:,.0f}  Izz {i[2][2]:,.0f}   "
+             f"Ixy {i[0][1]:,.0f}  Ixz {i[0][2]:,.0f}  Iyz {i[1][2]:,.0f}",
+             f"  Principal moments (kg m2): {mom[0]:,.0f} / {mom[1]:,.0f} / {mom[2]:,.0f}   "
+             f"(largest / smallest = {mom[2] / mom[0]:.1f})",
              "",
              "RADIATORS",
              f"  Each panel: {panel_len / 1000:.2f} m out x {p['RADIATOR_CHORD'] / 1000:.2f} m wide; "
@@ -275,6 +311,8 @@ def report(d: Design, overrides: dict | None = None) -> tuple[str, dict]:
         lines.append(f"  Floating part: {f['part']} ({f['nearest_gap_mm']} mm from anything)")
     for o in check["overlaps"]:
         lines.append(f"  OVERLAP: {o['a']} and {o['b']} ({o['overlap_cm3']} cm3)")
+    lines += ["", "NOT INCLUDED: structural, vibration (launch loads), thermal-network and orbital analysis. Mass and inertia come "
+              "from simple material densities and idealised blocks, so treat them as concept-stage estimates."]
     return "\n".join(lines), facts
 
 
@@ -308,7 +346,7 @@ def main(argv=None) -> int:
     ap.add_argument("--name", default="orbital_datacentre", help="name for the design and its output files")
     ap.add_argument("--out", default=str(HERE / "output"), help="output folder (default: ./output)")
     ap.add_argument("--set", action="append", metavar="KEY=VALUE", help="override a variable, e.g. RADIATOR_WINGSPAN=30000")
-    ap.add_argument("--view", action="store_true", help="open the preview picture when done")
+    ap.add_argument("--view", action="store_true", help="open the interactive 3D viewer when done")
     args = ap.parse_args(argv)
 
     overrides = _parse_overrides(args.set)
@@ -327,22 +365,27 @@ def main(argv=None) -> int:
     detail.write_bytes(render_png(build_core_detail(overrides, f"{args.name}_core_detail (chassis shell hidden)")))
     files = design.export(folder, args.name)
     design.save(folder / f"{args.name}.json")
+    bom = design.export_bom(folder / f"{args.name}_bom.csv")
+    viewer = write_viewer(design, folder / f"{args.name}_viewer.html")
     (folder / f"{args.name}_report.txt").write_text(text + "\n")
 
     print(text)
     print("\nFILES WRITTEN to", folder)
+    print(f"  viewer  : {Path(viewer).name}  (interactive 3D: orbit, zoom, click parts)")
     print("  picture :", picture.name, "  (4 views of the whole satellite)")
     print("  detail  :", detail.name, "  (compute blades and laser terminals, chassis shell hidden)")
     for fmt, info in files.items():
         print(f"  {fmt:8}: {Path(info['path']).name}  ({info['kilobytes']} KB)")
-    print(f"  recipe  : {args.name}.json  (reload with Design().load(...))")
+    print(f"  recipe  : {args.name}.json  (editable: variables + formulas; reload with Design().load(...))")
+    print(f"  bom     : {Path(bom).name}  (bill of materials)")
     print(f"  report  : {args.name}_report.txt")
     if args.view:
-        opener = {"Darwin": "open", "Linux": "xdg-open"}.get(platform.system())
-        if opener:
-            subprocess.run([opener, str(picture), str(detail)], check=False)
-        else:
-            print("Open the picture yourself:", picture)
+        try:
+            opened = webbrowser.open(Path(viewer).resolve().as_uri())
+        except Exception:
+            opened = False
+        if not opened:
+            print("Open the viewer yourself:", viewer)
     return 0
 
 
