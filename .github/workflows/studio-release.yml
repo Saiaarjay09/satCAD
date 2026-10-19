@@ -64,12 +64,21 @@ jobs:
           ln -s /Applications stage/Applications
           hdiutil create -volname "SatCAD Studio" -srcfolder stage -ov -format UDZO "SatCAD-Studio-${VERSION}-macos-arm64.dmg"
 
+      - name: Install Inno Setup (Windows)
+        if: runner.os == 'Windows'
+        run: choco install innosetup --no-progress -y
+
       - name: Make the Windows installer
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          choco install innosetup --no-progress -y
-          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=${VERSION}" studio.iss
-          mv installer/*.exe .
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found" }
+          & $iscc "/DAppVersion=$env:VERSION" studio.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+          Move-Item installer\*.exe .
+          Get-ChildItem SatCAD-Studio-*-setup.exe
 
       - uses: actions/upload-artifact@v4
         with:
