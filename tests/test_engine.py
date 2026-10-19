@@ -58,8 +58,18 @@ def test_tilt_hinges_about_attached_edge():
     d.add("chassis", "c", length=100, width=100, height=100)
     d.add("panel", "p", attach_to="c", side="+y", length=1000, width=100, thickness=1, tilt_deg=30)
     p = d.describe("p")
-    assert p["bbox_max_mm"][2] == pytest.approx(1000 * math.sin(math.radians(30)) + 0.5 * math.cos(math.radians(30)), abs=0.5)
-    assert p["bbox_min_mm"][1] == pytest.approx(50 - 0.5 * math.sin(math.radians(30)), abs=0.5)   # hinge stays on the face
+    # hinge on the top edge for an upward tilt: the tip rises by L*sin(30) and the panel never digs into the chassis
+    assert p["bbox_max_mm"][2] == pytest.approx(0.5 + 1000 * math.sin(math.radians(30)), abs=0.5)
+    assert p["bbox_min_mm"][1] >= 50 - 1e-6
+
+
+@pytest.mark.parametrize("side", ["+y", "-y", "+x", "-x", "+z", "-z"])
+@pytest.mark.parametrize("tilt", [-70, -30, 30, 70])
+def test_tilted_panels_never_dig_into_their_parent(side, tilt):
+    d = Design()
+    d.add("chassis", "c", length=400, width=300, height=200, wall=10)
+    d.add("panel", "p", attach_to="c", side=side, length=600, width=150, thickness=20, tilt_deg=tilt)
+    assert d.check()["ok"], d.check()["overlaps"]
 
 
 def test_overlap_and_floating_detection(sat):

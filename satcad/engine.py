@@ -181,11 +181,24 @@ class Design:
         c[thin] = centre[thin] + p["offset_thin"]
         solid = Pos(*c) * Box(*dims)
         if p["tilt_deg"]:
-            hinge = list(c)
-            hinge[a] = face + sign * p["gap"]
+            # The hinge sits on the attached edge. Which of the panel's two edges (top or bottom of its thickness)
+            # is the pivot depends on the tilt direction: pivoting about the wrong one swings the inner corner
+            # INTO the part it is attached to. Try both and keep the one that digs in least.
             direction = [0.0, 0.0, 0.0]
             direction[span] = 1.0
-            solid = solid.rotate(Axis(Vector(*hinge), Vector(*direction)), p["tilt_deg"])
+            plane = face + sign * p["gap"]                                  # where the panel meets the parent part
+            best = None
+            for edge in (+1, -1):
+                hinge = list(c)
+                hinge[a] = plane
+                hinge[thin] = c[thin] + edge * p["thickness"] / 2
+                tilted = solid.rotate(Axis(Vector(*hinge), Vector(*direction)), p["tilt_deg"])
+                bb = tilted.bounding_box()
+                lo, hi = [bb.min.X, bb.min.Y, bb.min.Z], [bb.max.X, bb.max.Y, bb.max.Z]
+                dug_in = (plane - lo[a]) if sign > 0 else (hi[a] - plane)
+                if best is None or dug_in < best[0] - 1e-9:
+                    best = (dug_in, tilted)
+            solid = best[1]
         return solid
 
     def rebuild(self) -> None:

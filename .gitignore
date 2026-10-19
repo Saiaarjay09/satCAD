@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 cad_output/
 examples/output/
+output/

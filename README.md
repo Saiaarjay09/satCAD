@@ -21,7 +21,7 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 
 1. [What you can do with it](#1-what-you-can-do-with-it)
 2. [Install](#2-install)
-3. [Use it](#3-use-it)
+3. [Use it](#3-use-it), including [building the orbital AI datacentre](#3f-build-the-orbital-ai-datacentre-build_satellitepy)
 4. [Five ideas that make CAD easy](#4-five-ideas-that-make-cad-easy)
 5. [What each file does](#5-what-each-file-does)
 6. [Reference: tools Claude can call](#6-reference-tools-claude-can-call)
@@ -45,6 +45,8 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 - **Catch mistakes.** Mass and centre of mass, overlapping parts, parts floating in space.
 - **Hand it on.** Export **STEP** (opens in most CAD programs, including Siemens NX), **STL** (3D printing,
   mesh viewers) or **GLB** (web and AR viewers).
+- **Build the full orbital AI datacentre in one command** (`python build_satellite.py`): chassis with compute
+  blades, radiators, laser transceivers and solar arrays, all driven by variables at the top of one file.
 - **Run trade studies.** Because designs are saved as small JSON recipes, you can version them in git and
   compare variants.
 
@@ -67,8 +69,8 @@ cd Open-source-CAD-software
 ```
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
-`requirements.txt`, and runs the 19 self-tests. It takes about a minute. It ends with
-`19 passed` and the path of the connector.
+`requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
+`65 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -170,6 +172,98 @@ name and colour are stored in the file; whether NX shows them depends on its imp
 not been tested against NX itself (no licence was available). The STEP output *was* verified by re-importing it
 into the open-source kernel and checking the volume matches.
 
+### 3f. Build the orbital AI datacentre (`build_satellite.py`)
+
+`build_satellite.py` uses SatCAD to design a complete space-based AI compute node with four subsystems:
+
+| # | Subsystem | What it is in the model |
+|---|---|---|
+| 1 | **Central datacentre chassis** | A large hollow aluminium box (6 x 2.4 x 2.4 m) holding a row of 12 upright **compute blades**, plus the mass of the pumps and coolant |
+| 2 | **Thermal radiators** | Two flat panels reaching out of the left and right sides, 22 m tip to tip: about **8 times the chassis's top-down footprint** |
+| 3 | **Optical inter-satellite links (OISL)** | Two cylindrical laser transceivers, one on the front and one on the rear, each a gimbal housing (for the Fast Steering Mirror) plus a telescope barrel |
+| 4 | **Solar arrays** | Two flat wings on the top and bottom faces, in a plane **perpendicular to the radiators**, with their big faces toward the sun |
+
+![The whole satellite in four views](docs/orbital_datacentre.png)
+
+![Cut-away: the compute blades and laser terminals with the chassis shell hidden](docs/orbital_datacentre_core_detail.png)
+
+**Run it** (from the repository folder, after `./setup.sh` has been run once):
+
+```bash
+source .venv/bin/activate
+python build_satellite.py --view
+```
+
+Or in one line without activating the environment:
+
+```bash
+.venv/bin/python build_satellite.py --view
+```
+
+It takes a few seconds. `--view` opens the pictures when done (macOS and Linux); leave it off to just write the files.
+
+**What you get**, in `output/orbital_datacentre/`:
+
+| File | What it is |
+|---|---|
+| `orbital_datacentre.png` | The whole satellite in four views (isometric, top, front, side) |
+| `orbital_datacentre_core_detail.png` | A cut-away of the compute blades and laser terminals, with the chassis shell hidden |
+| `orbital_datacentre.step` | The 3D model as a CAD file. Import it into Siemens NX, Fusion 360, SolidWorks or FreeCAD |
+| `orbital_datacentre.stl` / `.glb` | Mesh versions for 3D-printing slicers and web / AR / mesh viewers |
+| `orbital_datacentre.json` | The editable recipe: reload it with `Design().load(...)` or the connector's `load_design` |
+| `orbital_datacentre_report.txt` | The design report (also printed to the screen) |
+
+**Change the size.** Open `build_satellite.py`. The numbers you can change are in one clearly marked block at the
+very top. Edit one, save, and run it again. Everything is in millimetres.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CHASSIS_LENGTH` / `_WIDTH` / `_HEIGHT` | 6000 / 2400 / 2400 | Chassis size: front-to-back (X), left-to-right (Y), bottom-to-top (Z) |
+| `CHASSIS_WALL` | 15 | Wall thickness of the hollow chassis |
+| `PLUMBING_MASS_KG` | 1500 | Pumps, coolant and pipework inside (counted in mass, not drawn) |
+| `BLADE_COUNT`, `BLADE_THICKNESS`, `BLADE_PITCH`, `BLADE_HEIGHT`, `BLADE_SIDE_CLEARANCE` | 12, 120, 180, 1600, 60 | The row of compute blades inside the chassis. Pitch is centre-to-centre spacing |
+| `RADIATOR_WINGSPAN` | 22000 | **Tip-to-tip** span across both panels and the chassis |
+| `RADIATOR_CHORD` | 6000 | How wide each radiator panel is, along the satellite's length |
+| `RADIATOR_THICKNESS` | 40 | Radiator panel thickness |
+| `RADIATOR_TILT_DEG` | 0 | Hinge both panels up (+) or down (-) as a symmetric V |
+| `TRANSCEIVER_RADIUS` | 250 | Radius of each laser telescope barrel |
+| `TRANSCEIVER_LENGTH` | 800 | Length of each telescope barrel |
+| `GIMBAL_RADIUS_FACTOR`, `GIMBAL_LENGTH` | 1.4, 300 | Gimbal housing size, as a multiple of the telescope radius, and its length |
+| `SOLAR_WING_LENGTH` / `_WIDTH` / `_THICKNESS` | 14000 / 12000 / 40 | Size of each solar wing |
+| `RADIATOR_TEMP_K`, `RADIATOR_EMISSIVITY`, `SOLAR_CELL_EFFICIENCY`, `SOLAR_PACKING_FACTOR`, `SOLAR_END_OF_LIFE_FACTOR` | 330, 0.85, 0.30, 0.90, 0.85 | Operating assumptions used only for the report, not for the shapes |
+
+**Or change a size without editing the file** with `--set` (repeat it for several), and give the result its own name
+so it does not overwrite the first:
+
+```bash
+python build_satellite.py --set RADIATOR_WINGSPAN=30000 --set BLADE_COUNT=16 --name wide_radiators
+python build_satellite.py --set TRANSCEIVER_RADIUS=400 --set CHASSIS_LENGTH=8000 --name big_optics
+```
+
+If a combination can't work (for example more blades than fit, or a wingspan narrower than the chassis), the script
+stops with a plain-English message saying what to change.
+
+**Read the design report.** After building, the script prints the total mass, the mass by role, the **radiator area
+compared with the chassis**, how much heat the radiators can reject at the chosen temperature, how much electrical
+power the solar wings make, and a **heat balance**: all electrical power ends up as heat, so the radiators must be
+able to reject at least as much as the arrays generate. If they cannot, it prints a warning. If you shrink the radiators
+or enlarge the solar wings and see that warning, the design no longer closes thermally. It also lists any overlapping
+or floating parts. The radiator and solar numbers are rough estimates (see [Limits](#12-limits)).
+
+**Link to the optical-link simulator.** `TRANSCEIVER_RADIUS` is the barrel radius; the usable optical aperture is a bit
+smaller. It corresponds to the `--tx-aperture-m` / `--rx-aperture-m` settings in the
+[Orbital-Datacentre](https://github.com/Saiaarjay09/Orbital-Datacentre) link simulator, so you can size the telescope
+here and test its link performance there.
+
+**Use it from your own code:**
+
+```python
+import build_satellite
+d = build_satellite.build({"RADIATOR_WINGSPAN": 30000})     # any variable can be overridden
+text, facts = build_satellite.report(d, {"RADIATOR_WINGSPAN": 30000})
+print(facts["heat_rejection_kw"], facts["solar_power_kw"])
+```
+
 ## 4. Five ideas that make CAD easy
 
 1. **Part.** One solid object: the chassis, a radiator panel.
@@ -197,6 +291,7 @@ into the open-source kernel and checking the volume matches.
 Open-source-CAD-software/
 ├── README.md                 this guide
 ├── setup.sh                  one-time installer: environment + libraries + tests (+ optional Claude registration)
+├── build_satellite.py        THE ORBITAL DATACENTRE: builds the whole satellite from variables at its top
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
 ├── requirements.txt          the Python libraries needed (build123d, mcp, matplotlib, numpy, pytest)
 ├── pytest.ini                test settings
@@ -219,17 +314,21 @@ Open-source-CAD-software/
 │
 ├── tests/
 │   ├── test_engine.py        engine, physics and file-format tests (checked against hand calculations)
-│   └── test_server.py        launches the real server and talks to it like Claude does
+│   ├── test_server.py        launches the real server and talks to it like Claude does
+│   └── test_build_satellite.py  checks the satellite: radiators flat and symmetric, solar wings perpendicular, lasers front and rear, validation, command line
 │
 └── docs/
-    └── example_orbital_node.png   the picture at the top of this README
+    ├── example_orbital_node.png          the picture at the top of this README
+    ├── orbital_datacentre.png            whole-satellite picture used in section 3f
+    └── orbital_datacentre_core_detail.png  cut-away picture used in section 3f
 ```
 
 **Which file do I edit?**
 
 | I want to... | Edit |
 |---|---|
-| change a satellite's dimensions | nothing: ask Claude, or edit the numbers at the top of an `examples/` script |
+| change the orbital datacentre's dimensions | the numbers at the top of `build_satellite.py`, or `--set NAME=VALUE` on the command line |
+| change any other satellite's dimensions | nothing: ask Claude, or edit the numbers at the top of an `examples/` script |
 | add a material | `satcad/materials.py` |
 | add a new kind of part (e.g. a truss or a dish) | `satcad/engine.py` (see [Extending it](#9-extending-it)), then `satcad/server.py` |
 | change how the picture looks | `satcad/render.py` |
@@ -284,7 +383,7 @@ Parts that are not attached to something also take a **pose**: `x, y, z` (centre
 | `box` | `length`, `width`, `height` |
 | `cylinder` | `radius`, `height`, `axis` (`z`; `x`, `y` also allowed) |
 | `sphere` | `radius` |
-| `panel` | `attach_to` (name of an existing part), `side` (`+x -x +y -y +z -z`), `length` (how far it sticks out), `width` (along the face), `thickness`, `gap` (0, distance off the face), `offset_span` (0, slide along the width), `offset_thin` (0, slide along the thickness), `thin_axis` (default `z` for side faces, `x` for top/bottom faces), `tilt_deg` (0, hinge about the attached edge; positive follows the right-hand rule about the width axis) |
+| `panel` | `attach_to` (name of an existing part), `side` (`+x -x +y -y +z -z`), `length` (how far it sticks out), `width` (along the face), `thickness`, `gap` (0, distance off the face), `offset_span` (0, slide along the width), `offset_thin` (0, slide along the thickness), `thin_axis` (default `z` for side faces, `x` for top/bottom faces), `tilt_deg` (0, hinge about the attached edge, on whichever edge keeps the panel out of the part it is attached to; positive follows the right-hand rule about the width axis) |
 
 `edit_part` also accepts `offset_along_width` and `offset_along_thickness` as aliases for
 `offset_span` and `offset_thin`.
@@ -337,7 +436,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-19 tests. They check volumes and masses against hand calculations, panel placement and tilt, parametric
+65 tests. They check volumes and masses against hand calculations, panel placement and tilt, parametric
 updates, error messages, save/load, STEP round-tripping, the Stefan-Boltzmann and solar maths, picture output,
 and a full conversation with the real server over the MCP protocol.
 
