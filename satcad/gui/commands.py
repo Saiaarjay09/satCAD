@@ -87,6 +87,13 @@ class Commands:
         bodies = self._bodies()
         return bodies[-1] if bodies else None
 
+    def _face(self):
+        """The face picked in the viewport as (body, info) when it is a flat axis-aligned face of an existing body, else None."""
+        picked = getattr(self.w, "picked_face", None)
+        if picked and picked[0] in self.s.design.parts and picked[1].get("side"):
+            return picked
+        return None
+
     def _need_bodies(self, count: int = 1) -> bool:
         if len(self._bodies()) < count:
             self.s.message.emit("warn", "Create a body first (Block, Cylinder or Sphere on the Home tab)." if count == 1
@@ -133,9 +140,10 @@ class Commands:
     def blend(self, chamfer: bool = False) -> None:
         if not self._need_bodies():
             return
+        face = self._face()
         v = self._ask("Chamfer" if chamfer else "Edge Blend", [
-            dict(key="target", label="Body", type="choice", choices=self._bodies(), default=self._default_body()),
-            dict(key="edges", label="Edges", type="choice", choices=CHOICES["edges"], default="all"),
+            dict(key="target", label="Body", type="choice", choices=self._bodies(), default=face[0] if face else self._default_body()),
+            dict(key="edges", label="Edges", type="choice", choices=CHOICES["edges"], default=f"face:{face[1]['side']}" if face else "all"),
             dict(key="size", label="Distance (mm)" if chamfer else "Radius (mm)", default="5")],
             note="'all' = every edge. 'parallel:z' = edges running along Z. 'face:+z' = the edges around the top face.")
         if v:
@@ -146,14 +154,20 @@ class Commands:
     def hole(self) -> None:
         if not self._need_bodies():
             return
+        face = self._face()
+        if face and not face[1]["at_outer_face"]:
+            self.s.message.emit("warn", "The hole is measured from the body's outermost face in that direction, not from the face you picked; "
+                                        "set a depth to control how far it goes.")
         v = self._ask("Hole", [
-            dict(key="target", label="Body", type="choice", choices=self._bodies(), default=self._default_body()),
-            dict(key="side", label="Face", type="choice", choices=CHOICES["side"], default="+z"),
+            dict(key="target", label="Body", type="choice", choices=self._bodies(), default=face[0] if face else self._default_body()),
+            dict(key="side", label="Face", type="choice", choices=CHOICES["side"], default=face[1]["side"] if face else "+z"),
             dict(key="standard", label="Size", type="choice", choices=CHOICES["standard"], default="M6"),
             dict(key="hole_type", label="Type", type="choice", choices=CHOICES["hole_type"], default="clearance"),
             dict(key="depth", label="Depth (0 = through)", default="0"),
-            dict(key="offset_u", label="Offset U (mm)", default="0"), dict(key="offset_v", label="Offset V (mm)", default="0")],
-            note="ISO hole at the centre of the chosen face, shifted by the offsets.")
+            dict(key="offset_u", label="Offset U (mm)", default=f"{face[1]['offset_u']:g}" if face else "0"),
+            dict(key="offset_v", label="Offset V (mm)", default=f"{face[1]['offset_v']:g}" if face else "0")],
+            note=("Placed where you clicked." if face else "ISO hole at the centre of the chosen face, shifted by the offsets. "
+                  "Tip: switch the selection filter to Face and click a face to place the hole where you click."))
         if v:
             vals = {k: self._num(v[k]) for k in ("depth", "offset_u", "offset_v")}
             if None not in vals.values():
@@ -162,9 +176,10 @@ class Commands:
     def shell(self) -> None:
         if not self._need_bodies():
             return
+        face = self._face()
         v = self._ask("Shell", [
-            dict(key="target", label="Body", type="choice", choices=self._bodies(), default=self._default_body()),
-            dict(key="open_faces", label="Open faces", default="+z"),
+            dict(key="target", label="Body", type="choice", choices=self._bodies(), default=face[0] if face else self._default_body()),
+            dict(key="open_faces", label="Open faces", default=face[1]["side"] if face else "+z"),
             dict(key="thickness", label="Wall thickness (mm)", default="5")],
             note="Hollows the body. List the faces to leave open, separated by commas, for example +z or +z,-z.")
         if v:

@@ -2,7 +2,7 @@
 
 A desktop CAD application for spacecraft design, laid out like a professional CAD package: **ribbon** (Home, Assemblies, Simulate, View),
 **Part Navigator** feature tree, **Property Editor** with formulas, a shaded **3D viewport with edge highlights**, **Boolean** operations (Unite,
-Subtract, Intersect), Edge Blend / Chamfer / Hole / Shell, assemblies with hinges, mass properties, interference checks, a BETA structural
+Subtract, Intersect), face picking, Edge Blend / Chamfer / Hole / Shell, assemblies with hinges, mass properties, interference checks, a BETA structural
 (modal and static) analysis, undo / redo, and STEP / STL / GLB export. It runs entirely on your computer. Open and save `.json` parts, including
 ones made by Claude or the SatCAD scripts.
 
@@ -27,4 +27,4 @@ Mouse: left click selects, **middle drag rotates**, **Shift + middle drag pans**
 ### Please note
 
 A **concept-design** tool: the analysis is a BETA flat-plate model, and nothing here is certified for flight hardware (see `docs/NX_BENCHMARK.md`). The 3D view needs a
-working OpenGL driver (any ordinary PC or Mac). Selection is whole-body only for now; there is no sketcher and no STEP import yet.
+working OpenGL driver (any ordinary PC or Mac). Bodies and flat faces can be picked (Select filter on the Home tab); there is no single-edge picking, no sketcher and no STEP import yet.

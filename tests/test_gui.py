@@ -383,3 +383,77 @@ def test_property_editor_leaves_no_stale_widgets_behind(session):
     assert "Mass properties" not in titles and "Dimensions" in titles
     session.select(None)
     assert [g.title() for g in editor._body.findChildren(QGroupBox)] == ["Mass properties"]
+
+
+# ---- face picking --------------------------------------------------------------------------------------------------------------------
+def test_face_data_identifies_flat_axis_aligned_faces(app):
+    from satcad.gui.viewport import part_face_data, part_polydata
+    d = Design("t")
+    d.add("box", "a", length=100, width=60, height=40, fillet=5)
+    d.add("cylinder", "c", radius=20, height=50)
+    box = part_face_data(d.parts["a"])
+    assert sorted(f["side"] for f in box if f["side"]) == ["+x", "+y", "+z", "-x", "-y", "-z"]       # 6 flat faces, the rest are fillets
+    assert sum(1 for f in box if not f["planar"]) == len(box) - 6
+    cyl = part_face_data(d.parts["c"])
+    assert sorted(f["side"] for f in cyl if f["side"]) == ["+z", "-z"] and sum(1 for f in cyl if not f["planar"]) == 1
+    poly = part_polydata(d.parts["a"])
+    ids = poly.GetCellData().GetArray("face_id")
+    assert ids.GetNumberOfTuples() == poly.GetNumberOfPolys() == sum(len(f["tris"]) for f in box)
+    assert {int(ids.GetValue(i)) for i in range(ids.GetNumberOfTuples())} == set(range(len(box)))
+
+
+def test_picked_face_offsets_place_a_hole_where_clicked(app):
+    from build123d import Vector
+    from satcad.gui.viewport import face_pick_info, part_face_data
+    d = Design("t")
+    d.add("box", "a", length=200, width=100, height=40)
+    part = d.parts["a"]
+    for side, point in (("+z", (30.0, -20.0, 20.0)), ("+y", (-40.0, 50.0, 5.0)), ("-x", (-100.0, 10.0, -12.0))):
+        face = [f for f in part_face_data(part) if f["side"] == side][0]
+        info = face_pick_info(part, face, point)
+        assert info["side"] == side and info["at_outer_face"]
+        e = Design("t")
+        e.add("box", "a", length=200, width=100, height=40)
+        e.add("hole", "h", target="a", side=side, standard="M6", offset_u=info["offset_u"], offset_v=info["offset_v"])
+        p = Vector(*point)
+        inward = {"+z": Vector(0, 0, -1), "+y": Vector(0, -1, 0), "-x": Vector(1, 0, 0)}[side]
+        assert not e.parts["a"].solid.is_inside(p + inward * 3)                   # the drilled hole is exactly under the clicked point
+        assert e.parts["a"].solid.is_inside(p + inward * 3 + Vector(*[(1 - abs(v)) * 8 for v in (inward.X, inward.Y, inward.Z)]))   # solid just beside it
+
+
+def test_viewport_face_mode_picks_face_and_reports_it(viewport):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtTest import QTest
+    d = Design("t")
+    d.add("box", "a", length=100, width=100, height=100)
+    viewport.set_design(d, fit=True)
+    viewport.set_view("top")
+    got, bodies = [], []
+    viewport.face_clicked.connect(lambda n, info: got.append((n, info)))
+    viewport.body_clicked.connect(lambda n, c: bodies.append(n))
+    QTest.mouseClick(viewport, Qt.LeftButton, Qt.NoModifier, viewport.rect().center())          # body filter: no face event
+    assert got == [] and bodies == ["a"]
+    viewport.set_filter("face")
+    QTest.mouseClick(viewport, Qt.LeftButton, Qt.NoModifier, viewport.rect().center())
+    assert len(got) == 1 and got[0][0] == "a" and got[0][1]["side"] == "+z"
+    assert abs(got[0][1]["offset_u"]) < 5 and abs(got[0][1]["offset_v"]) < 5                    # clicked the middle of the top face
+    assert viewport._face_actor is not None
+    QTest.mouseClick(viewport, Qt.LeftButton, Qt.NoModifier, QPoint(6, 6))                      # background clears the overlay
+    assert viewport._face_actor is None and bodies[-1] is None
+    viewport.set_filter("body")
+
+
+def test_window_uses_the_picked_face_for_commands(app):
+    from satcad.gui.ui_layout import MainWindow
+    session = Session()
+    win = MainWindow(session, viewport_factory=_stub_viewport_class())
+    a = session.add("box", length=100, width=100, height=100)
+    assert win.commands._face() is None
+    win._on_face(a, dict(side="+z", planar=True, offset_u=12.0, offset_v=-7.0, at_outer_face=True, point=(12, -7, 50), normal=(0, 0, 1)))
+    assert win.commands._face()[1]["side"] == "+z" and "+z" in win.cue.text()
+    session.add("cylinder", radius=5, height=5)                                              # any rebuild invalidates the pick
+    assert win.picked_face is None and win.commands._face() is None
+    win._on_face(a, dict(side=None, planar=False, offset_u=0, offset_v=0, at_outer_face=False, point=(0, 0, 0), normal=None))
+    assert win.commands._face() is None and "curved" in win.cue.text()
+    win.set_filter("face")
+    assert win.picked_face is None and win._filter_buttons["face"].isChecked() and not win._filter_buttons["body"].isChecked()

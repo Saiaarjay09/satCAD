@@ -121,6 +121,7 @@ class MainWindow(QMainWindow):
         self._build_menus()
         self._wire()
         self._fit_next = True
+        self.picked_face = None                                # (body name, face info) after a click in Face mode
         self._refresh_all()
         self._update_title()
 
@@ -134,6 +135,12 @@ class MainWindow(QMainWindow):
         g.add_button("New", "new", c.new, "New part (Ctrl+N)")
         g.add_button("Open", "open", c.open, "Open a saved part (Ctrl+O)")
         g.add_button("Save", "save", c.save, "Save (Ctrl+S)")
+        g = home.add_group("Select")
+        self._filter_buttons = {
+            "body": g.add_button("Body", "block", lambda: self.set_filter("body"), "Click selects a whole body", large=False, checkable=True),
+            "face": g.add_button("Face", "shell", lambda: self.set_filter("face"),
+                                 "Click picks a flat face: Hole, Shell and Edge Blend then start from it", large=False, checkable=True)}
+        self._filter_buttons["body"].setChecked(True)
         g = home.add_group("Primitives")
         g.add_button("Block", "block", c.block, "Create a 100 mm block; set its size in the Property Editor")
         g.add_button("Cylinder", "cylinder", c.cylinder, "Create a cylinder")
@@ -262,8 +269,29 @@ class MainWindow(QMainWindow):
         if hasattr(v, "body_clicked"):
             v.body_clicked.connect(lambda part, _ctrl: s.select(self._feature_for(part)))
             v.context_requested.connect(self._viewport_menu)
+        if hasattr(v, "face_clicked"):
+            v.face_clicked.connect(self._on_face)
+
+    def set_filter(self, mode: str) -> None:
+        """Selection filter: 'body' or 'face'."""
+        self.picked_face = None
+        if hasattr(self.viewport, "set_filter"):
+            self.viewport.set_filter(mode)
+        for key, b in getattr(self, "_filter_buttons", {}).items():
+            b.setChecked(key == mode)
+        self.cue.setText("Click a flat face: Hole, Shell and Edge Blend will start from it" if mode == "face"
+                         else "Select a body, or pick a command from the ribbon")
+
+    def _on_face(self, body: str, info: dict) -> None:
+        self.picked_face = (body, info)
+        side = info.get("side")
+        if side:
+            self.cue.setText(f"Face {side} of {body} picked at offset ({info['offset_u']:g}, {info['offset_v']:g}) mm: now use Hole, Shell or Edge Blend")
+        else:
+            self.cue.setText(f"{body}: that face is curved or not square to an axis. Pick a flat axis-aligned face for Hole / Shell")
 
     def _refresh_all(self) -> None:
+        self.picked_face = None
         fit, self._fit_next = self._fit_next, False
         self.viewport.set_design(self.session.design, hidden=self.navigator.hidden, selected=self._part_for(self.session.selected), fit=fit)
         self.undo_action.setEnabled(self.session.can_undo)

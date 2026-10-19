@@ -36,7 +36,7 @@ from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray,
 from vtkmodules.vtkCommonCore import vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.vtkFiltersCore import vtkPolyDataNormals
-from vtkmodules.vtkRenderingCore import (vtkActor, vtkLightKit, vtkPolyDataMapper, vtkPropPicker, vtkRenderer, vtkRenderWindow,
+from vtkmodules.vtkRenderingCore import (vtkActor, vtkCellPicker, vtkLightKit, vtkPolyDataMapper, vtkPropPicker, vtkRenderer, vtkRenderWindow,
                                          vtkWindowToImageFilter)
 
 from . import theme
@@ -47,13 +47,45 @@ CLICK_SLOP_PX = 5
 # ==========================================================================================================
 #  Geometry conversion (pure functions: no window needed, so they are unit-tested)
 # ==========================================================================================================
-def part_polydata(part, tolerance: float | None = None) -> vtkPolyData:
-    """Triangle mesh of a body with smooth-where-curved normals."""
+AXIS_NAMES = "xyz"
+
+
+def part_face_data(part, tolerance: float | None = None) -> list[dict]:
+    """Tessellate a solid face by face. Each entry: pts (N,3), tris (M,3), plus what the interface needs to act on the face: whether it is flat,
+    its outward normal and centre, and `side` ('+z', '-x' ...) when it is a flat face square to an axis (what Hole / Shell commands take)."""
     mn, mx = part.bbox()
     size = max(mx[i] - mn[i] for i in range(3)) or 1.0
-    verts, tris = part.solid.tessellate(tolerance or max(size / 250.0, 0.02), 0.2)
-    pts = np.array([(v.X, v.Y, v.Z) for v in verts], dtype=float).reshape(-1, 3)
-    tri = np.array(tris, dtype=np.int64).reshape(-1, 3)
+    tol = tolerance or max(size / 250.0, 0.02)
+    faces = []
+    for face in part.solid.faces():
+        verts, tris = face.tessellate(tol, 0.2)
+        if not tris:
+            continue
+        pts = np.array([(v.X, v.Y, v.Z) for v in verts], dtype=float).reshape(-1, 3)
+        planar = face.geom_type == GeomType.PLANE
+        c = face.center()
+        normal, side = None, None
+        if planar:
+            n = face.normal_at()
+            normal = (n.X, n.Y, n.Z)
+            axis = int(np.argmax(np.abs(normal)))
+            if abs(normal[axis]) > 0.9999:
+                side = ("+" if normal[axis] > 0 else "-") + AXIS_NAMES[axis]
+        faces.append(dict(pts=pts, tris=np.array(tris, dtype=np.int64).reshape(-1, 3), planar=planar, normal=normal, side=side,
+                          centre=(c.X, c.Y, c.Z), area=float(face.area)))
+    return faces
+
+
+def polydata_from_faces(faces: list[dict]) -> vtkPolyData:
+    """One triangle mesh from per-face tessellations, with a 'face_id' cell array and smooth-where-curved normals."""
+    pts, tris, ids, base = [], [], [], 0
+    for i, f in enumerate(faces):
+        pts.append(f["pts"])
+        tris.append(f["tris"] + base)
+        ids.append(np.full(len(f["tris"]), i, dtype=np.int32))
+        base += len(f["pts"])
+    pts = np.vstack(pts) if pts else np.zeros((0, 3))
+    tri = np.vstack(tris) if tris else np.zeros((0, 3), dtype=np.int64)
     poly = vtkPolyData()
     vtk_pts = vtkPoints()
     vtk_pts.SetData(numpy_to_vtk(pts, deep=True))
@@ -62,6 +94,9 @@ def part_polydata(part, tolerance: float | None = None) -> vtkPolyData:
     flat = np.column_stack([np.full(len(tri), 3, dtype=np.int64), tri]).ravel()
     cells.SetCells(len(tri), numpy_to_vtkIdTypeArray(flat, deep=True))
     poly.SetPolys(cells)
+    fid = numpy_to_vtk(np.concatenate(ids) if ids else np.zeros(0, dtype=np.int32), deep=True)
+    fid.SetName("face_id")
+    poly.GetCellData().AddArray(fid)
     normals = vtkPolyDataNormals()
     normals.SetInputData(poly)
     normals.SetFeatureAngle(35.0)
@@ -72,6 +107,41 @@ def part_polydata(part, tolerance: float | None = None) -> vtkPolyData:
     out = vtkPolyData()
     out.ShallowCopy(normals.GetOutput())
     return out
+
+
+def part_polydata(part, tolerance: float | None = None) -> vtkPolyData:
+    """Triangle mesh of a body with smooth-where-curved normals (cell array 'face_id' says which B-rep face each triangle belongs to)."""
+    return polydata_from_faces(part_face_data(part, tolerance))
+
+
+def face_polydata(face: dict) -> vtkPolyData:
+    """Just one face (used for the selection overlay)."""
+    poly = vtkPolyData()
+    vtk_pts = vtkPoints()
+    vtk_pts.SetData(numpy_to_vtk(face["pts"], deep=True))
+    poly.SetPoints(vtk_pts)
+    cells = vtkCellArray()
+    flat = np.column_stack([np.full(len(face["tris"]), 3, dtype=np.int64), face["tris"]]).ravel()
+    cells.SetCells(len(face["tris"]), numpy_to_vtkIdTypeArray(flat, deep=True))
+    poly.SetPolys(cells)
+    return poly
+
+
+def face_pick_info(part, face: dict, point) -> dict:
+    """What a Hole / Shell command needs from a picked flat face: its side token and the hole offsets of the picked point, measured the way the
+    engine measures them (from the body's bounding-box centre along the face's two sliding axes)."""
+    side = face["side"]
+    info = dict(side=side, planar=face["planar"], point=tuple(point), normal=face["normal"], offset_u=0.0, offset_v=0.0, at_outer_face=False)
+    if side:
+        a = AXIS_NAMES.index(side[1])
+        u, v = (a + 1) % 3, (a + 2) % 3
+        mn, mx = part.bbox()
+        centre = [(mn[i] + mx[i]) / 2 for i in range(3)]
+        info["offset_u"] = round(float(point[u]) - centre[u], 3)
+        info["offset_v"] = round(float(point[v]) - centre[v], 3)
+        outer = mx[a] if side[0] == "+" else mn[a]
+        info["at_outer_face"] = abs(face["centre"][a] - outer) < 0.05
+    return info
 
 
 def part_edges(part) -> vtkPolyData:
@@ -124,6 +194,7 @@ AXIS_COLORS = {"X": "#ff5d5d", "Y": "#5fd08a", "Z": "#5aa8ff"}
 class Viewport(QWidget):
     body_clicked = Signal(object, bool)          # body (part) name or None, ctrl/cmd held
     context_requested = Signal(object, object)   # body name or None, global QPoint
+    face_clicked = Signal(object, object)        # body name, face info dict (see face_pick_info); only in 'face' selection mode
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -145,6 +216,12 @@ class Viewport(QWidget):
         self._edges: dict[str, vtkActor] = {}
         self._base_color: dict[str, tuple] = {}
         self._by_actor: dict[int, str] = {}
+        self._faces: dict[str, list] = {}
+        self._parts: dict[str, object] = {}
+        self._cell_picker = vtkCellPicker()
+        self._cell_picker.SetTolerance(0.0005)
+        self._face_actor: vtkActor | None = None
+        self._filter = "body"
         self._selected: str | None = None
         self._mode = "shaded_edges"
         self._hidden: set[str] = set()
@@ -235,9 +312,13 @@ class Viewport(QWidget):
             for a in actors.values():
                 self.ren.RemoveActor(a)
         self._surfaces, self._edges, self._base_color, self._by_actor = {}, {}, {}, {}
+        self._faces, self._parts = {}, {}
+        self.clear_face()
         self._hidden = set(hidden or ())
         for name, part in design.parts.items():
-            surf = _actor(part_polydata(part), True)
+            faces = part_face_data(part)
+            self._faces[name], self._parts[name] = faces, part
+            surf = _actor(polydata_from_faces(faces), True)
             prop = surf.GetProperty()
             prop.SetColor(*part.color)
             prop.SetInterpolationToPhong()
@@ -287,6 +368,56 @@ class Viewport(QWidget):
         self._mode = mode if mode in ("shaded_edges", "shaded", "wireframe") else "shaded_edges"
         self._apply_state()
         self.request_render()
+
+    # ---- selection filter and face overlay -------------------------------------------------------------------------------------------
+    def set_filter(self, mode: str) -> None:
+        """'body' (a click selects a whole body) or 'face' (a click also picks the flat face under the cursor)."""
+        self._filter = "face" if mode == "face" else "body"
+        if self._filter == "body":
+            self.clear_face()
+
+    @property
+    def filter(self) -> str:
+        return self._filter
+
+    def show_face(self, name: str, index: int) -> None:
+        self.clear_face()
+        faces = self._faces.get(name)
+        if not faces or not 0 <= index < len(faces):
+            return
+        actor = _actor(face_polydata(faces[index]), True)
+        actor.GetMapper().SetRelativeCoincidentTopologyPolygonOffsetParameters(-2.0, -2.0)    # draw in front of the surface
+        prop = actor.GetProperty()
+        prop.SetColor(0.15, 0.75, 1.0)
+        prop.SetOpacity(0.85)
+        prop.LightingOff()
+        actor.PickableOff()
+        self.ren.AddActor(actor)
+        self._face_actor = actor
+        self.request_render()
+
+    def clear_face(self) -> None:
+        if self._face_actor is not None:
+            self.ren.RemoveActor(self._face_actor)
+            self._face_actor = None
+            self.request_render()
+
+    def pick_face(self, x: float, y: float):
+        """(body name, face index, world point) under a widget position, or None."""
+        _w, h, ratio = self._pixel_size()
+        px, py = int(x * ratio * SUPERSAMPLE), int((self.height() - y) * ratio * SUPERSAMPLE)
+        self.rw.SetSize(_w * SUPERSAMPLE, h * SUPERSAMPLE)
+        if not self._cell_picker.Pick(px, py, 0, self.ren):
+            return None
+        actor = self._cell_picker.GetActor()
+        name = self._by_actor.get(id(actor)) if actor is not None else None
+        cell = self._cell_picker.GetCellId()
+        if name is None or cell < 0:
+            return None
+        ids = actor.GetMapper().GetInput().GetCellData().GetArray("face_id")
+        if ids is None or cell >= ids.GetNumberOfTuples():
+            return None
+        return name, int(ids.GetValue(cell)), self._cell_picker.GetPickPosition()
 
     # ---- camera ----------------------------------------------------------------------------------------------------------------------
     def _bounds(self):
@@ -409,7 +540,19 @@ class Viewport(QWidget):
         if abs(pos.x() - x0) + abs(pos.y() - y0) > CLICK_SLOP_PX:
             return
         if btn == Qt.LeftButton and not (mods & Qt.AltModifier):
-            self.body_clicked.emit(self.pick(pos.x(), pos.y()), bool(mods & (Qt.ControlModifier | Qt.MetaModifier)))
+            ctrl = bool(mods & (Qt.ControlModifier | Qt.MetaModifier))
+            if self._filter == "face":
+                hit = self.pick_face(pos.x(), pos.y())
+                if hit is None:
+                    self.clear_face()
+                    self.body_clicked.emit(None, ctrl)
+                    return
+                name, index, point = hit
+                self.body_clicked.emit(name, ctrl)
+                self.show_face(name, index)
+                self.face_clicked.emit(name, face_pick_info(self._parts[name], self._faces[name][index], point))
+                return
+            self.body_clicked.emit(self.pick(pos.x(), pos.y()), ctrl)
         elif btn == Qt.RightButton:
             self.context_requested.emit(self.pick(pos.x(), pos.y()), ev.globalPosition().toPoint())
 

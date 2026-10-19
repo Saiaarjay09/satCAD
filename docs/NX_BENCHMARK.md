@@ -62,7 +62,7 @@ problems only · **No** = not there · **Ahead** = SatCAD does something NX does
 
 | Capability | NX | SatCAD today | Status | Gap |
 |---|---|---|---|---|
-| Desktop user interface | Ribbon, Part Navigator, property panels, 3D viewport | A Qt desktop app in the same layout: ribbon, feature tree, property editor, shaded viewport with edges, undo / redo | Partial | Far fewer commands and no sketching; selection is whole-body only (no face / edge picking yet) |
+| Desktop user interface | Ribbon, Part Navigator, property panels, 3D viewport | A Qt desktop app in the same layout: ribbon, feature tree, property editor, shaded viewport with edges, undo / redo | Partial | Far fewer commands and no sketching; bodies and flat faces can be picked (a picked face drives Hole, Shell and Edge Blend); no single-edge picking, no sketcher |
 | STEP export | AP203/214/242 | STEP with part names and colours | Partial | No PMI or assembly metadata beyond names |
 | STEP import | Yes | No | No | Needed to use vendor parts |
 | 2D drawings, GD&T, PMI | Yes | No | No | |

@@ -52,7 +52,7 @@ pip install PySide6 vtk                  # the interface (Qt for Python) and the
 python main.py --demo                    # or:  python -m satcad.gui  [saved_part.json]
 ```
 
-**What you can do:** click a body to select it; edit any dimension in the Property Editor (numbers or `=formulas`) and the part rebuilds; create
+**What you can do:** click a body to select it (or switch the **Select** filter on the Home tab to **Face** and click a flat face: **Hole**, **Shell** and **Edge Blend** then start from that face, and a hole is placed exactly where you clicked); edit any dimension in the Property Editor (numbers or `=formulas`) and the part rebuilds; create
 Blocks, Cylinders and Spheres; **Unite / Subtract / Intersect** two bodies (the tool body is consumed, as in NX); **Edge Blend**, **Chamfer**, **Hole**
 (ISO sizes) and **Shell**; group parts into **assemblies** with hinges; run **Interference** and **Mass Properties**; run the BETA **modal / static**
 structural analysis; **undo / redo** every change; open and save parts (`.json`, the same files Claude and the Studio app use); export **STEP / STL / GLB**.
@@ -71,8 +71,8 @@ menu. With no middle button (Mac trackpad): **Alt + left drag rotates, Alt + Shi
 4. **Rendering.** Each body is two VTK actors (surface, edges) in one `vtkRenderer` with Phong shading, a three-point light kit and polygon offset (so edges never
    flicker against surfaces). VTK renders into an **off-screen** window; the frame is read back, supersampled 2x for smooth edges, and painted by an ordinary Qt widget.
    (The stock VTK-in-Qt widget embeds a native GL surface; it hangs on some recent macOS releases, and the off-screen route behaves identically on macOS, Windows and Linux.)
-5. **Interaction.** Mouse events are translated into camera moves (a turntable orbit that keeps Z up, pan, dolly) in `viewport.py`; picking uses VTK's `vtkPropPicker`,
-   and a click selects the matching feature in the Part Navigator. Selection, visibility checkboxes and the tree stay in sync through Qt signals on a single `Session`
+5. **Interaction.** Mouse events are translated into camera moves (a turntable orbit that keeps Z up, pan, dolly) in `viewport.py`; picking uses VTK's `vtkPropPicker` for bodies
+   and `vtkCellPicker` for faces (each triangle carries the id of its B-rep face), and a click selects the matching feature in the Part Navigator. Selection, visibility checkboxes and the tree stay in sync through Qt signals on a single `Session`
    object that wraps the engine and keeps undo history.
 
 The Claude connector and the browser-based Studio keep their own lightweight renderers (matplotlib pictures and three.js), because they must work without a graphics
@@ -146,7 +146,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`311 passed` and the path of the connector.
+`315 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -720,7 +720,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-311 tests. They include:
+315 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
