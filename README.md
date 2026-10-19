@@ -176,6 +176,22 @@ nothing is selected: `NUM_SERVER_BLADES` (1 to 18), `RADIATOR_SPAN_MM`, `SOLAR_S
 
 ---
 
+## The heavy orbital node and X-Ray
+
+`generate_heavy_orbital_node.py` is a second, larger example (a standalone script; the app does not include it either): a 3.5 x 3.5 x 5.5 m hollow bus with **16 server trays** (2200 x 1800 x 65 mm,
+220 mm pitch), three colour-coded schematic systems (`HV_Power_Schematic` orange, `Optical_Data_Schematic` cyan, `MPFL_Fluid_Schematic` red / blue) routed through the corridors beside the trays,
+four laser turrets, and two 16 m radiator wings with trapezoidal ridges and rifled micro-ridge tubes: **320 bodies, about 19 t, no overlaps, rebuilt in about 0.2 s**. **Open**
+`sattelite designs/heavy_orbital_node.json`, then use **View -> X-Ray** to make the hull, racks and radiator skins 85% transparent while the power, optical and fluid loops stay solid.
+Parts get an X-Ray group from their `layer` setting; each Part Navigator assembly row has a tick box that hides or shows all its parts. `BUS WIDTH MM`, `TRAY PITCH MM` and
+`FIN RIDGE ANGLE DEG` appear in the Property Editor and rebuild the model when changed. See [section 6b of the guide](docs/HOW_TO_USE.md#6b-the-heavy-orbital-node-and-x-ray).
+
+```bash
+python generate_heavy_orbital_node.py --set TRAY_PITCH_MM=200 --name my_node
+```
+
+Honest limits: the 35 mm wall is a plain solid wall (no isogrid pattern), the 650 mm corridor is measured from the outer skin (615 mm clear inside along X), and the pipes, pumps and
+electronics are schematic shapes for layout and clash checking, not analysed or flight hardware.
+
 ## How to use satCAD
 
 **New here? Read the illustrated guide: [docs/HOW_TO_USE.md](docs/HOW_TO_USE.md).** It walks through the app step by step with screenshots: installing, the five areas of the
@@ -259,7 +275,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`386 passed` and the path of the connector.
+`419 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -599,6 +615,7 @@ Open-source-CAD-software/
 ├── requirements-gui.txt      the extra libraries for the desktop application (PySide6, vtk)
 ├── sattelite designs/          ALL saved satellite designs: STEP files and .json recipes (see its README)
 ├── generate_orbital_node_assembly.py   builds the detailed Orbital-Node-Alpha satellite (6 sub-assemblies, 405 bodies, STEP export)
+├── generate_heavy_orbital_node.py   builds the heavy orbital node (16 trays, power / optical / fluid schematics, 16 m radiator wings; 320 bodies, STEP export)
 ├── studio_app.py             entry point of the SatCAD Studio app
 ├── studio.spec / studio.iss  recipes that package Studio (PyInstaller) and make the Windows installer (Inno Setup)
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
@@ -847,7 +864,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-386 tests. They include:
+419 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
@@ -856,6 +873,7 @@ python -m pytest -q
 - Assemblies and hinges, ISO hole and screw dimensions, thread engagement, shell / sweep / loft validation, and the stow-and-deploy poses.
 - Volumes of extrudes, tubes, revolves, fillets, holes and pockets; pattern and mirror positions.
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
+- The heavy orbital node (bodies, 16 trays at the right pitch, ridge and rifled-tube geometry, the three parameters, the CLI), X-Ray, layers and Part Navigator folder toggles.
 - Panel placement and tilt on all six faces, parametric rebuilds, error messages, save/load (including older files),
   STEP round-tripping, the Stefan-Boltzmann and solar maths, picture and viewer output (including a script-injection test),
   the orbital datacentre model, and full conversations with the real server over the MCP protocol.

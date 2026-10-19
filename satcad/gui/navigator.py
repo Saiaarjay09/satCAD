@@ -18,6 +18,7 @@ class PartNavigator(QTreeWidget):
     selected = Signal(object)                # feature name or None
     visibility_changed = Signal(str, bool)   # part name, visible
     delete_requested = Signal(str)
+    hidden_changed = Signal(object)          # the whole set of hidden part names (after an assembly was shown or hidden)
 
     def __init__(self, session: Session):
         super().__init__()
@@ -63,7 +64,11 @@ class PartNavigator(QTreeWidget):
             item.setData(0, Qt.UserRole, name)
             item.setForeground(1, Qt.gray)
             flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-            if f.kind not in MODIFIERS and f.kind != "assembly" and name in d.parts:
+            if f.kind == "assembly":
+                flags |= Qt.ItemIsUserCheckable                     # ticking an assembly shows or hides everything inside it
+                item.setData(0, Qt.UserRole + 1, "assembly")
+                item.setCheckState(0, Qt.Checked)
+            elif f.kind not in MODIFIERS and name in d.parts:
                 flags |= Qt.ItemIsUserCheckable
                 item.setCheckState(0, Qt.Unchecked if name in self.hidden else Qt.Checked)
             elif f.kind == "pattern":
@@ -75,6 +80,7 @@ class PartNavigator(QTreeWidget):
             self._items[name] = item
             if name in expanded or f.kind == "assembly":
                 item.setExpanded(True)
+        self._refresh_assembly_checks()
         self.resizeColumnToContents(0)
         self._building = False
         self.select(self.session.selected)
@@ -96,15 +102,58 @@ class PartNavigator(QTreeWidget):
             self.scrollToItem(item)
         self._building = False
 
+    def _members(self, assembly: str) -> list[str]:
+        try:
+            return [p.name for p in self.session.design._members(assembly)]
+        except Exception:
+            return []
+
+    def _refresh_assembly_checks(self) -> None:
+        """Tick state of every assembly row: checked when all its parts are shown, unchecked when all are hidden, partial otherwise."""
+        for name, item in self._items.items():
+            if item.data(0, Qt.UserRole + 1) != "assembly":
+                continue
+            members = self._members(name)
+            hidden = [m for m in members if m in self.hidden]
+            state = Qt.Checked if not hidden else (Qt.Unchecked if len(hidden) == len(members) else Qt.PartiallyChecked)
+            item.setCheckState(0, state)
+
+    def _sync_part_rows(self) -> None:
+        for name, item in self._items.items():
+            if item.data(0, Qt.UserRole + 1) != "assembly" and item.flags() & Qt.ItemIsUserCheckable:
+                item.setCheckState(0, Qt.Unchecked if name in self.hidden else Qt.Checked)
+
     def _on_check(self, item: QTreeWidgetItem, column: int) -> None:
         if self._building or column != 0:
             return
         name = item.data(0, Qt.UserRole)
         if not name:
             return
+        if item.data(0, Qt.UserRole + 1) == "assembly":
+            show = item.checkState(0) != Qt.Unchecked if item.checkState(0) != Qt.PartiallyChecked else True
+            members = self._members(name)
+            (self.hidden.difference_update if show else self.hidden.update)(members)
+            self._building = True
+            self._sync_part_rows()
+            self._refresh_assembly_checks()
+            self._building = False
+            self.hidden_changed.emit(set(self.hidden))
+            return
         visible = item.checkState(0) == Qt.Checked
         (self.hidden.discard if visible else self.hidden.add)(name)
         self.visibility_changed.emit(name, visible)
+        self._building = True
+        self._refresh_assembly_checks()
+        self._building = False
+
+    def show_all(self) -> None:
+        """Show every part again."""
+        self.hidden.clear()
+        self._building = True
+        self._sync_part_rows()
+        self._refresh_assembly_checks()
+        self._building = False
+        self.hidden_changed.emit(set())
 
     def _menu(self, pos) -> None:
         item = self.itemAt(pos)

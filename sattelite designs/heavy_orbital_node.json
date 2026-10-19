@@ -1,0 +1,2926 @@
+{
+  "format": "satcad-2",
+  "name": "Heavy_Orbital_Node",
+  "units": "mm",
+  "variables": {
+    "BUS_WIDTH_MM": 3500,
+    "TRAY_PITCH_MM": 220,
+    "FIN_RIDGE_ANGLE_DEG": 120,
+    "hull_half": "=BUS_WIDTH_MM / 2",
+    "wing_root_y": "=BUS_WIDTH_MM / 2 + 1050",
+    "tray_z0": "=-7.5 * TRAY_PITCH_MM",
+    "stack_half": "=7.5 * TRAY_PITCH_MM + 32.5",
+    "bus_bottom": -2500,
+    "bus_top": "=stack_half + 60",
+    "manifold_z0": "=-stack_half - 150",
+    "manifold_len": "=2 * stack_half + 300",
+    "fin_base_half": "=min(5.0 + 35 * tan(FIN_RIDGE_ANGLE_DEG / 2), 69.0)"
+  },
+  "features": [
+    {
+      "name": "Primary_Bus",
+      "kind": "assembly",
+      "params": {}
+    },
+    {
+      "name": "bus_hull",
+      "kind": "box",
+      "params": {
+        "length": "=BUS_WIDTH_MM",
+        "width": "=BUS_WIDTH_MM",
+        "height": 5500,
+        "material": "aluminum_6061",
+        "role": "chassis",
+        "color": [
+          0.7843,
+          0.8,
+          0.8235
+        ],
+        "assembly": "Primary_Bus",
+        "layer": "shell"
+      }
+    },
+    {
+      "name": "bus_cavity",
+      "kind": "box",
+      "params": {
+        "length": "=BUS_WIDTH_MM - 70",
+        "width": "=BUS_WIDTH_MM - 70",
+        "height": 5430
+      }
+    },
+    {
+      "name": "bus_hollow",
+      "kind": "boolean",
+      "params": {
+        "operation": "subtract",
+        "target": "bus_hull",
+        "tool": "bus_cavity"
+      }
+    },
+    {
+      "name": "port_pos_y_hot",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "+y",
+        "shape": "circle",
+        "diameter": 100,
+        "depth": 35,
+        "offset_u": 0,
+        "offset_v": 300
+      }
+    },
+    {
+      "name": "port_pos_y_cold",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "+y",
+        "shape": "circle",
+        "diameter": 100,
+        "depth": 35,
+        "offset_u": 0,
+        "offset_v": -300
+      }
+    },
+    {
+      "name": "port_neg_y_hot",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "-y",
+        "shape": "circle",
+        "diameter": 100,
+        "depth": 35,
+        "offset_u": 0,
+        "offset_v": 300
+      }
+    },
+    {
+      "name": "port_neg_y_cold",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "-y",
+        "shape": "circle",
+        "diameter": 100,
+        "depth": 35,
+        "offset_u": 0,
+        "offset_v": -300
+      }
+    },
+    {
+      "name": "port_fwd_a",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "+z",
+        "shape": "circle",
+        "diameter": 40,
+        "depth": 35,
+        "offset_u": -1420,
+        "offset_v": 1300
+      }
+    },
+    {
+      "name": "port_fwd_b",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "+z",
+        "shape": "circle",
+        "diameter": 40,
+        "depth": 35,
+        "offset_u": -1420,
+        "offset_v": -1300
+      }
+    },
+    {
+      "name": "port_aft_a",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "-z",
+        "shape": "circle",
+        "diameter": 40,
+        "depth": 35,
+        "offset_u": -1420,
+        "offset_v": 1300
+      }
+    },
+    {
+      "name": "port_aft_b",
+      "kind": "cutout",
+      "params": {
+        "target": "bus_hull",
+        "side": "-z",
+        "shape": "circle",
+        "diameter": 40,
+        "depth": 35,
+        "offset_u": -1420,
+        "offset_v": -1300
+      }
+    },
+    {
+      "name": "Compute_Core",
+      "kind": "assembly",
+      "params": {}
+    },
+    {
+      "name": "server_tray",
+      "kind": "box",
+      "params": {
+        "length": 2200,
+        "width": 1800,
+        "height": 65,
+        "z": "=tray_z0",
+        "material": "generic_equipment",
+        "role": "payload",
+        "color": [
+          0.0784,
+          0.2353,
+          0.1176
+        ],
+        "assembly": "Compute_Core",
+        "layer": "shell"
+      }
+    },
+    {
+      "name": "server_tray_stack",
+      "kind": "pattern",
+      "params": {
+        "source": "server_tray",
+        "mode": "linear",
+        "count": 16,
+        "dx": 0,
+        "dy": 0,
+        "dz": "=TRAY_PITCH_MM",
+        "assembly": "Compute_Core"
+      }
+    },
+    {
+      "name": "HV_Power_Schematic",
+      "kind": "assembly",
+      "params": {}
+    },
+    {
+      "name": "battery_bank_1",
+      "kind": "box",
+      "params": {
+        "length": 500,
+        "width": 800,
+        "height": 300,
+        "x": 1400,
+        "y": 405,
+        "z": -2565.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          1.0,
+          0.549,
+          0.0
+        ],
+        "assembly": "HV_Power_Schematic",
+        "layer": "power"
+      }
+    },
+    {
+      "name": "battery_bank_2",
+      "kind": "mirror",
+      "params": {
+        "source": "battery_bank_1",
+        "plane": "zx",
+        "assembly": "HV_Power_Schematic"
+      }
+    },
+    {
+      "name": "battery_bank_3",
+      "kind": "box",
+      "params": {
+        "length": 500,
+        "width": 800,
+        "height": 300,
+        "x": 1400,
+        "y": 405,
+        "z": -2265.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          1.0,
+          0.549,
+          0.0
+        ],
+        "assembly": "HV_Power_Schematic",
+        "layer": "power"
+      }
+    },
+    {
+      "name": "battery_bank_4",
+      "kind": "mirror",
+      "params": {
+        "source": "battery_bank_3",
+        "plane": "zx",
+        "assembly": "HV_Power_Schematic"
+      }
+    },
+    {
+      "name": "solar_regulator_1",
+      "kind": "box",
+      "params": {
+        "length": 400,
+        "width": 300,
+        "height": 250,
+        "x": 1450,
+        "y": 1300,
+        "z": -2590.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.8235,
+          0.4118,
+          0.0
+        ],
+        "assembly": "HV_Power_Schematic",
+        "layer": "power"
+      }
+    },
+    {
+      "name": "solar_regulator_2",
+      "kind": "mirror",
+      "params": {
+        "source": "solar_regulator_1",
+        "plane": "zx",
+        "assembly": "HV_Power_Schematic"
+      }
+    },
+    {
+      "name": "busbar_main",
+      "kind": "box",
+      "params": {
+        "length": 40,
+        "width": 10,
+        "height": "=bus_top - bus_bottom",
+        "x": 1300,
+        "y": 0,
+        "z": "=(bus_top + bus_bottom) / 2",
+        "material": "copper",
+        "role": "schematic",
+        "color": [
+          0.8235,
+          0.4118,
+          0.0
+        ],
+        "assembly": "HV_Power_Schematic",
+        "layer": "power"
+      }
+    },
+    {
+      "name": "busbar_feeder",
+      "kind": "box",
+      "params": {
+        "length": 180,
+        "width": 40,
+        "height": 10,
+        "x": 1190,
+        "y": 0,
+        "z": "=tray_z0",
+        "material": "copper",
+        "role": "schematic",
+        "color": [
+          1.0,
+          0.549,
+          0.0
+        ],
+        "assembly": "HV_Power_Schematic",
+        "layer": "power"
+      }
+    },
+    {
+      "name": "busbar_feeder_run",
+      "kind": "pattern",
+      "params": {
+        "source": "busbar_feeder",
+        "mode": "linear",
+        "count": 16,
+        "dx": 0,
+        "dy": 0,
+        "dz": "=TRAY_PITCH_MM",
+        "assembly": "HV_Power_Schematic"
+      }
+    },
+    {
+      "name": "Optical_Data_Schematic",
+      "kind": "assembly",
+      "params": {}
+    },
+    {
+      "name": "optical_switch_top",
+      "kind": "box",
+      "params": {
+        "length": 480,
+        "width": 700,
+        "height": 220,
+        "x": -1420,
+        "y": 0,
+        "z": 2300,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "optical_switch_bottom",
+      "kind": "mirror",
+      "params": {
+        "source": "optical_switch_top",
+        "plane": "xy",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "edfa_1",
+      "kind": "box",
+      "params": {
+        "length": 300,
+        "width": 250,
+        "height": 120,
+        "x": -1420,
+        "y": 1300,
+        "z": 2250,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.5882,
+          0.7843
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "edfa_2",
+      "kind": "mirror",
+      "params": {
+        "source": "edfa_1",
+        "plane": "zx",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "edfa_3",
+      "kind": "mirror",
+      "params": {
+        "source": "edfa_1",
+        "plane": "xy",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "edfa_4",
+      "kind": "mirror",
+      "params": {
+        "source": "edfa_2",
+        "plane": "xy",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "flight_shield",
+      "kind": "box",
+      "params": {
+        "length": 520,
+        "width": 520,
+        "height": 420,
+        "x": -1420,
+        "y": 1000,
+        "z": 0,
+        "material": "titanium_ti6al4v",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.5882,
+          0.7843
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "flight_shield_cavity",
+      "kind": "box",
+      "params": {
+        "length": 440,
+        "width": 440,
+        "height": 340,
+        "x": -1420,
+        "y": 1000,
+        "z": 0
+      }
+    },
+    {
+      "name": "flight_shield_hollow",
+      "kind": "boolean",
+      "params": {
+        "operation": "subtract",
+        "target": "flight_shield",
+        "tool": "flight_shield_cavity"
+      }
+    },
+    {
+      "name": "flight_computer",
+      "kind": "box",
+      "params": {
+        "length": 440,
+        "width": 440,
+        "height": 340,
+        "x": -1420,
+        "y": 1000,
+        "z": 0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "fibre_trunk",
+      "kind": "cylinder",
+      "params": {
+        "radius": 6,
+        "height": 4380,
+        "axis": "z",
+        "x": -1250,
+        "y": 0,
+        "z": 0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "fibre_branch",
+      "kind": "cylinder",
+      "params": {
+        "radius": 6,
+        "height": 144,
+        "axis": "x",
+        "x": -1172,
+        "y": 0,
+        "z": "=tray_z0",
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "fibre_branch_run",
+      "kind": "pattern",
+      "params": {
+        "source": "fibre_branch",
+        "mode": "linear",
+        "count": 16,
+        "dx": 0,
+        "dy": 0,
+        "dz": "=TRAY_PITCH_MM",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "fibre_computer_link",
+      "kind": "cylinder",
+      "params": {
+        "radius": 6,
+        "height": 734,
+        "axis": "y",
+        "x": -1250,
+        "y": 373,
+        "z": 0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "fibre_edfa_switch_1",
+      "kind": "cylinder",
+      "params": {
+        "radius": 6,
+        "height": 825,
+        "axis": "y",
+        "x": -1420,
+        "y": 762.5,
+        "z": 2250,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "fibre_edfa_switch_2",
+      "kind": "mirror",
+      "params": {
+        "source": "fibre_edfa_switch_1",
+        "plane": "zx",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "fibre_edfa_switch_3",
+      "kind": "mirror",
+      "params": {
+        "source": "fibre_edfa_switch_1",
+        "plane": "xy",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "fibre_edfa_switch_4",
+      "kind": "mirror",
+      "params": {
+        "source": "fibre_edfa_switch_2",
+        "plane": "xy",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "fibre_turret_1",
+      "kind": "cylinder",
+      "params": {
+        "radius": 6,
+        "height": 440,
+        "axis": "z",
+        "x": -1420,
+        "y": 1300,
+        "z": 2530,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "Optical_Data_Schematic",
+        "layer": "optical"
+      }
+    },
+    {
+      "name": "fibre_turret_2",
+      "kind": "mirror",
+      "params": {
+        "source": "fibre_turret_1",
+        "plane": "zx",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "fibre_turret_3",
+      "kind": "mirror",
+      "params": {
+        "source": "fibre_turret_1",
+        "plane": "xy",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "fibre_turret_4",
+      "kind": "mirror",
+      "params": {
+        "source": "fibre_turret_2",
+        "plane": "xy",
+        "assembly": "Optical_Data_Schematic"
+      }
+    },
+    {
+      "name": "MPFL_Fluid_Schematic",
+      "kind": "assembly",
+      "params": {}
+    },
+    {
+      "name": "hot_manifold_A",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 3,
+        "depth": "=manifold_len",
+        "plane": "xy",
+        "x": 300,
+        "y": 1300,
+        "z": "=manifold_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "cold_manifold_A",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 3,
+        "depth": "=manifold_len",
+        "plane": "xy",
+        "x": -300,
+        "y": 1300,
+        "z": "=manifold_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "hot_feeder_A",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 10,
+        "wall": 1.5,
+        "depth": 370,
+        "plane": "zx",
+        "x": 300,
+        "y": 900,
+        "z": "=tray_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "hot_feeder_A_run",
+      "kind": "pattern",
+      "params": {
+        "source": "hot_feeder_A",
+        "mode": "linear",
+        "count": 16,
+        "dx": 0,
+        "dy": 0,
+        "dz": "=TRAY_PITCH_MM",
+        "assembly": "MPFL_Fluid_Schematic"
+      }
+    },
+    {
+      "name": "cold_feeder_A",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 10,
+        "wall": 1.5,
+        "depth": 370,
+        "plane": "zx",
+        "x": -300,
+        "y": 900,
+        "z": "=tray_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "cold_feeder_A_run",
+      "kind": "pattern",
+      "params": {
+        "source": "cold_feeder_A",
+        "mode": "linear",
+        "count": 16,
+        "dx": 0,
+        "dy": 0,
+        "dz": "=TRAY_PITCH_MM",
+        "assembly": "MPFL_Fluid_Schematic"
+      }
+    },
+    {
+      "name": "pump_A1",
+      "kind": "cylinder",
+      "params": {
+        "radius": 150,
+        "height": 400,
+        "axis": "z",
+        "x": 650,
+        "y": 1300,
+        "z": -2400.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "pump_saddle_A1",
+      "kind": "box",
+      "params": {
+        "length": 200,
+        "width": 300,
+        "height": 115,
+        "x": 650,
+        "y": 1300,
+        "z": -2657.5,
+        "material": "aluminum_6061",
+        "role": "schematic",
+        "color": [
+          0.7529,
+          0.7686,
+          0.8
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "pump_A2",
+      "kind": "cylinder",
+      "params": {
+        "radius": 150,
+        "height": 400,
+        "axis": "z",
+        "x": 950,
+        "y": 1300,
+        "z": -2400.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "pump_saddle_A2",
+      "kind": "box",
+      "params": {
+        "length": 200,
+        "width": 300,
+        "height": 115,
+        "x": 950,
+        "y": 1300,
+        "z": -2657.5,
+        "material": "aluminum_6061",
+        "role": "schematic",
+        "color": [
+          0.7529,
+          0.7686,
+          0.8
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "accumulator_A",
+      "kind": "cylinder",
+      "params": {
+        "radius": 300,
+        "height": 800,
+        "axis": "z",
+        "x": -800,
+        "y": 1300,
+        "z": -2315.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "hot_line_A",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": "=wing_root_y - 30 - 1330",
+        "plane": "zx",
+        "x": 300,
+        "z": 0,
+        "y": 1330,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "cold_line_A",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": "=wing_root_y - 30 - 1330",
+        "plane": "zx",
+        "x": -300,
+        "z": 0,
+        "y": 1330,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "hot_manifold_B",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 3,
+        "depth": "=manifold_len",
+        "plane": "xy",
+        "x": 300,
+        "y": -1300,
+        "z": "=manifold_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "cold_manifold_B",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 3,
+        "depth": "=manifold_len",
+        "plane": "xy",
+        "x": -300,
+        "y": -1300,
+        "z": "=manifold_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "hot_feeder_B",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 10,
+        "wall": 1.5,
+        "depth": 370,
+        "plane": "zx",
+        "x": 300,
+        "y": -1270,
+        "z": "=tray_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "hot_feeder_B_run",
+      "kind": "pattern",
+      "params": {
+        "source": "hot_feeder_B",
+        "mode": "linear",
+        "count": 16,
+        "dx": 0,
+        "dy": 0,
+        "dz": "=TRAY_PITCH_MM",
+        "assembly": "MPFL_Fluid_Schematic"
+      }
+    },
+    {
+      "name": "cold_feeder_B",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 10,
+        "wall": 1.5,
+        "depth": 370,
+        "plane": "zx",
+        "x": -300,
+        "y": -1270,
+        "z": "=tray_z0",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "cold_feeder_B_run",
+      "kind": "pattern",
+      "params": {
+        "source": "cold_feeder_B",
+        "mode": "linear",
+        "count": 16,
+        "dx": 0,
+        "dy": 0,
+        "dz": "=TRAY_PITCH_MM",
+        "assembly": "MPFL_Fluid_Schematic"
+      }
+    },
+    {
+      "name": "pump_B1",
+      "kind": "cylinder",
+      "params": {
+        "radius": 150,
+        "height": 400,
+        "axis": "z",
+        "x": 650,
+        "y": -1300,
+        "z": -2400.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "pump_saddle_B1",
+      "kind": "box",
+      "params": {
+        "length": 200,
+        "width": 300,
+        "height": 115,
+        "x": 650,
+        "y": -1300,
+        "z": -2657.5,
+        "material": "aluminum_6061",
+        "role": "schematic",
+        "color": [
+          0.7529,
+          0.7686,
+          0.8
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "pump_B2",
+      "kind": "cylinder",
+      "params": {
+        "radius": 150,
+        "height": 400,
+        "axis": "z",
+        "x": 950,
+        "y": -1300,
+        "z": -2400.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "pump_saddle_B2",
+      "kind": "box",
+      "params": {
+        "length": 200,
+        "width": 300,
+        "height": 115,
+        "x": 950,
+        "y": -1300,
+        "z": -2657.5,
+        "material": "aluminum_6061",
+        "role": "schematic",
+        "color": [
+          0.7529,
+          0.7686,
+          0.8
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "accumulator_B",
+      "kind": "cylinder",
+      "params": {
+        "radius": 300,
+        "height": 800,
+        "axis": "z",
+        "x": -800,
+        "y": -1300,
+        "z": -2315.0,
+        "material": "generic_equipment",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "hot_line_B",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": "=wing_root_y - 30 - 1330",
+        "plane": "zx",
+        "x": 300,
+        "z": 0,
+        "y": "=-(wing_root_y - 30)",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "cold_line_B",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": "=wing_root_y - 30 - 1330",
+        "plane": "zx",
+        "x": -300,
+        "z": 0,
+        "y": "=-(wing_root_y - 30)",
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "MPFL_Fluid_Schematic",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "Radiator_Wings",
+      "kind": "assembly",
+      "params": {}
+    },
+    {
+      "name": "Radiator_Wing_PosY",
+      "kind": "assembly",
+      "params": {
+        "parent": "Radiator_Wings"
+      }
+    },
+    {
+      "name": "boom_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "rect",
+        "width": 300,
+        "height": 900,
+        "wall": 25,
+        "depth": 1000,
+        "plane": "zx",
+        "y": "=hull_half",
+        "material": "aluminum_6061",
+        "role": "structure",
+        "color": [
+          0.7529,
+          0.7686,
+          0.8
+        ],
+        "assembly": "Radiator_Wing_PosY"
+      }
+    },
+    {
+      "name": "fin_top_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            21,
+            -70.0
+          ],
+          [
+            21,
+            "=-fin_base_half"
+          ],
+          [
+            56,
+            -5.0
+          ],
+          [
+            56,
+            5.0
+          ],
+          [
+            21,
+            "=fin_base_half"
+          ],
+          [
+            21,
+            70.0
+          ],
+          [
+            18,
+            70.0
+          ],
+          [
+            18,
+            -70.0
+          ]
+        ],
+        "depth": 16000,
+        "plane": "zx",
+        "x": -2030.0,
+        "y": "=wing_root_y + 40",
+        "material": "aluminum_honeycomb",
+        "role": "radiator",
+        "color": [
+          0.9608,
+          0.9608,
+          0.9804
+        ],
+        "assembly": "Radiator_Wing_PosY",
+        "layer": "shell"
+      }
+    },
+    {
+      "name": "fin_top_pos_y_ridges",
+      "kind": "pattern",
+      "params": {
+        "source": "fin_top_pos_y",
+        "mode": "linear",
+        "count": 30,
+        "dx": 140,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_PosY"
+      }
+    },
+    {
+      "name": "fin_bottom_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            -18,
+            -70.0
+          ],
+          [
+            -18,
+            70.0
+          ],
+          [
+            -21,
+            70.0
+          ],
+          [
+            -21,
+            "=fin_base_half"
+          ],
+          [
+            -56,
+            5.0
+          ],
+          [
+            -56,
+            -5.0
+          ],
+          [
+            -21,
+            "=-fin_base_half"
+          ],
+          [
+            -21,
+            -70.0
+          ]
+        ],
+        "depth": 16000,
+        "plane": "zx",
+        "x": -2030.0,
+        "y": "=wing_root_y + 40",
+        "material": "aluminum_honeycomb",
+        "role": "radiator",
+        "color": [
+          0.9608,
+          0.9608,
+          0.9804
+        ],
+        "assembly": "Radiator_Wing_PosY",
+        "layer": "shell"
+      }
+    },
+    {
+      "name": "fin_bottom_pos_y_ridges",
+      "kind": "pattern",
+      "params": {
+        "source": "fin_bottom_pos_y",
+        "mode": "linear",
+        "count": 30,
+        "dx": 140,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_PosY"
+      }
+    },
+    {
+      "name": "root_header_hot_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": 2100,
+        "plane": "yz",
+        "x": 0,
+        "y": "=wing_root_y",
+        "z": 0,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "Radiator_Wing_PosY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "root_header_cold_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": 2100,
+        "plane": "yz",
+        "x": -2100,
+        "y": "=wing_root_y",
+        "z": 0,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "Radiator_Wing_PosY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tip_header_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": 4200,
+        "plane": "yz",
+        "x": -2100,
+        "y": "=wing_root_y + 40 + 16000 + 40",
+        "z": 0,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "Radiator_Wing_PosY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tube_hot_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 18,
+        "depth": 16020,
+        "plane": "zx",
+        "x": 175,
+        "z": 0,
+        "y": "=wing_root_y + 30",
+        "material": "aluminum_6061",
+        "role": "radiator",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "Radiator_Wing_PosY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tube_hot_pos_y_bore",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            15.9124,
+            -1.6725
+          ],
+          [
+            14.0,
+            0.0
+          ],
+          [
+            15.9124,
+            1.6725
+          ],
+          [
+            15.5077,
+            3.9385
+          ],
+          [
+            14.7821,
+            6.1229
+          ],
+          [
+            13.7505,
+            8.1807
+          ],
+          [
+            12.4343,
+            10.0691
+          ],
+          [
+            9.8995,
+            9.8995
+          ],
+          [
+            10.0691,
+            12.4343
+          ],
+          [
+            8.1807,
+            13.7505
+          ],
+          [
+            6.1229,
+            14.7821
+          ],
+          [
+            3.9385,
+            15.5077
+          ],
+          [
+            1.6725,
+            15.9124
+          ],
+          [
+            0.0,
+            14.0
+          ],
+          [
+            -1.6725,
+            15.9124
+          ],
+          [
+            -3.9385,
+            15.5077
+          ],
+          [
+            -6.1229,
+            14.7821
+          ],
+          [
+            -8.1807,
+            13.7505
+          ],
+          [
+            -10.0691,
+            12.4343
+          ],
+          [
+            -9.8995,
+            9.8995
+          ],
+          [
+            -12.4343,
+            10.0691
+          ],
+          [
+            -13.7505,
+            8.1807
+          ],
+          [
+            -14.7821,
+            6.1229
+          ],
+          [
+            -15.5077,
+            3.9385
+          ],
+          [
+            -15.9124,
+            1.6725
+          ],
+          [
+            -14.0,
+            0.0
+          ],
+          [
+            -15.9124,
+            -1.6725
+          ],
+          [
+            -15.5077,
+            -3.9385
+          ],
+          [
+            -14.7821,
+            -6.1229
+          ],
+          [
+            -13.7505,
+            -8.1807
+          ],
+          [
+            -12.4343,
+            -10.0691
+          ],
+          [
+            -9.8995,
+            -9.8995
+          ],
+          [
+            -10.0691,
+            -12.4343
+          ],
+          [
+            -8.1807,
+            -13.7505
+          ],
+          [
+            -6.1229,
+            -14.7821
+          ],
+          [
+            -3.9385,
+            -15.5077
+          ],
+          [
+            -1.6725,
+            -15.9124
+          ],
+          [
+            -0.0,
+            -14.0
+          ],
+          [
+            1.6725,
+            -15.9124
+          ],
+          [
+            3.9385,
+            -15.5077
+          ],
+          [
+            6.1229,
+            -14.7821
+          ],
+          [
+            8.1807,
+            -13.7505
+          ],
+          [
+            10.0691,
+            -12.4343
+          ],
+          [
+            9.8995,
+            -9.8995
+          ],
+          [
+            12.4343,
+            -10.0691
+          ],
+          [
+            13.7505,
+            -8.1807
+          ],
+          [
+            14.7821,
+            -6.1229
+          ],
+          [
+            15.5077,
+            -3.9385
+          ]
+        ],
+        "depth": 16020,
+        "plane": "zx",
+        "x": 175,
+        "y": "=wing_root_y + 30"
+      }
+    },
+    {
+      "name": "tube_hot_pos_y_rifle",
+      "kind": "boolean",
+      "params": {
+        "operation": "subtract",
+        "target": "tube_hot_pos_y",
+        "tool": "tube_hot_pos_y_bore"
+      }
+    },
+    {
+      "name": "tube_hot_pos_y_row",
+      "kind": "pattern",
+      "params": {
+        "source": "tube_hot_pos_y",
+        "mode": "linear",
+        "count": 6,
+        "dx": 350,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_PosY"
+      }
+    },
+    {
+      "name": "tube_cold_pos_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 18,
+        "depth": 16020,
+        "plane": "zx",
+        "x": -175,
+        "z": 0,
+        "y": "=wing_root_y + 30",
+        "material": "aluminum_6061",
+        "role": "radiator",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "Radiator_Wing_PosY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tube_cold_pos_y_bore",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            15.9124,
+            -1.6725
+          ],
+          [
+            14.0,
+            0.0
+          ],
+          [
+            15.9124,
+            1.6725
+          ],
+          [
+            15.5077,
+            3.9385
+          ],
+          [
+            14.7821,
+            6.1229
+          ],
+          [
+            13.7505,
+            8.1807
+          ],
+          [
+            12.4343,
+            10.0691
+          ],
+          [
+            9.8995,
+            9.8995
+          ],
+          [
+            10.0691,
+            12.4343
+          ],
+          [
+            8.1807,
+            13.7505
+          ],
+          [
+            6.1229,
+            14.7821
+          ],
+          [
+            3.9385,
+            15.5077
+          ],
+          [
+            1.6725,
+            15.9124
+          ],
+          [
+            0.0,
+            14.0
+          ],
+          [
+            -1.6725,
+            15.9124
+          ],
+          [
+            -3.9385,
+            15.5077
+          ],
+          [
+            -6.1229,
+            14.7821
+          ],
+          [
+            -8.1807,
+            13.7505
+          ],
+          [
+            -10.0691,
+            12.4343
+          ],
+          [
+            -9.8995,
+            9.8995
+          ],
+          [
+            -12.4343,
+            10.0691
+          ],
+          [
+            -13.7505,
+            8.1807
+          ],
+          [
+            -14.7821,
+            6.1229
+          ],
+          [
+            -15.5077,
+            3.9385
+          ],
+          [
+            -15.9124,
+            1.6725
+          ],
+          [
+            -14.0,
+            0.0
+          ],
+          [
+            -15.9124,
+            -1.6725
+          ],
+          [
+            -15.5077,
+            -3.9385
+          ],
+          [
+            -14.7821,
+            -6.1229
+          ],
+          [
+            -13.7505,
+            -8.1807
+          ],
+          [
+            -12.4343,
+            -10.0691
+          ],
+          [
+            -9.8995,
+            -9.8995
+          ],
+          [
+            -10.0691,
+            -12.4343
+          ],
+          [
+            -8.1807,
+            -13.7505
+          ],
+          [
+            -6.1229,
+            -14.7821
+          ],
+          [
+            -3.9385,
+            -15.5077
+          ],
+          [
+            -1.6725,
+            -15.9124
+          ],
+          [
+            -0.0,
+            -14.0
+          ],
+          [
+            1.6725,
+            -15.9124
+          ],
+          [
+            3.9385,
+            -15.5077
+          ],
+          [
+            6.1229,
+            -14.7821
+          ],
+          [
+            8.1807,
+            -13.7505
+          ],
+          [
+            10.0691,
+            -12.4343
+          ],
+          [
+            9.8995,
+            -9.8995
+          ],
+          [
+            12.4343,
+            -10.0691
+          ],
+          [
+            13.7505,
+            -8.1807
+          ],
+          [
+            14.7821,
+            -6.1229
+          ],
+          [
+            15.5077,
+            -3.9385
+          ]
+        ],
+        "depth": 16020,
+        "plane": "zx",
+        "x": -175,
+        "y": "=wing_root_y + 30"
+      }
+    },
+    {
+      "name": "tube_cold_pos_y_rifle",
+      "kind": "boolean",
+      "params": {
+        "operation": "subtract",
+        "target": "tube_cold_pos_y",
+        "tool": "tube_cold_pos_y_bore"
+      }
+    },
+    {
+      "name": "tube_cold_pos_y_row",
+      "kind": "pattern",
+      "params": {
+        "source": "tube_cold_pos_y",
+        "mode": "linear",
+        "count": 6,
+        "dx": -350,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_PosY"
+      }
+    },
+    {
+      "name": "Radiator_Wing_NegY",
+      "kind": "assembly",
+      "params": {
+        "parent": "Radiator_Wings"
+      }
+    },
+    {
+      "name": "boom_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "rect",
+        "width": 300,
+        "height": 900,
+        "wall": 25,
+        "depth": 1000,
+        "plane": "zx",
+        "y": "=-(hull_half + 1000)",
+        "material": "aluminum_6061",
+        "role": "structure",
+        "color": [
+          0.7529,
+          0.7686,
+          0.8
+        ],
+        "assembly": "Radiator_Wing_NegY"
+      }
+    },
+    {
+      "name": "fin_top_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            21,
+            -70.0
+          ],
+          [
+            21,
+            "=-fin_base_half"
+          ],
+          [
+            56,
+            -5.0
+          ],
+          [
+            56,
+            5.0
+          ],
+          [
+            21,
+            "=fin_base_half"
+          ],
+          [
+            21,
+            70.0
+          ],
+          [
+            18,
+            70.0
+          ],
+          [
+            18,
+            -70.0
+          ]
+        ],
+        "depth": 16000,
+        "plane": "zx",
+        "x": -2030.0,
+        "y": "=-(wing_root_y + 40 + 16000)",
+        "material": "aluminum_honeycomb",
+        "role": "radiator",
+        "color": [
+          0.9608,
+          0.9608,
+          0.9804
+        ],
+        "assembly": "Radiator_Wing_NegY",
+        "layer": "shell"
+      }
+    },
+    {
+      "name": "fin_top_neg_y_ridges",
+      "kind": "pattern",
+      "params": {
+        "source": "fin_top_neg_y",
+        "mode": "linear",
+        "count": 30,
+        "dx": 140,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_NegY"
+      }
+    },
+    {
+      "name": "fin_bottom_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            -18,
+            -70.0
+          ],
+          [
+            -18,
+            70.0
+          ],
+          [
+            -21,
+            70.0
+          ],
+          [
+            -21,
+            "=fin_base_half"
+          ],
+          [
+            -56,
+            5.0
+          ],
+          [
+            -56,
+            -5.0
+          ],
+          [
+            -21,
+            "=-fin_base_half"
+          ],
+          [
+            -21,
+            -70.0
+          ]
+        ],
+        "depth": 16000,
+        "plane": "zx",
+        "x": -2030.0,
+        "y": "=-(wing_root_y + 40 + 16000)",
+        "material": "aluminum_honeycomb",
+        "role": "radiator",
+        "color": [
+          0.9608,
+          0.9608,
+          0.9804
+        ],
+        "assembly": "Radiator_Wing_NegY",
+        "layer": "shell"
+      }
+    },
+    {
+      "name": "fin_bottom_neg_y_ridges",
+      "kind": "pattern",
+      "params": {
+        "source": "fin_bottom_neg_y",
+        "mode": "linear",
+        "count": 30,
+        "dx": 140,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_NegY"
+      }
+    },
+    {
+      "name": "root_header_hot_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": 2100,
+        "plane": "yz",
+        "x": 0,
+        "y": "=-wing_root_y",
+        "z": 0,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "Radiator_Wing_NegY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "root_header_cold_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": 2100,
+        "plane": "yz",
+        "x": -2100,
+        "y": "=-wing_root_y",
+        "z": 0,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "Radiator_Wing_NegY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tip_header_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 30,
+        "wall": 2,
+        "depth": 4200,
+        "plane": "yz",
+        "x": -2100,
+        "y": "=-(wing_root_y + 40 + 16000 + 40)",
+        "z": 0,
+        "material": "stainless_316",
+        "role": "schematic",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "Radiator_Wing_NegY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tube_hot_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 18,
+        "depth": 16020,
+        "plane": "zx",
+        "x": 175,
+        "z": 0,
+        "y": "=-(wing_root_y + 30 + 16020)",
+        "material": "aluminum_6061",
+        "role": "radiator",
+        "color": [
+          0.8824,
+          0.1961,
+          0.1569
+        ],
+        "assembly": "Radiator_Wing_NegY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tube_hot_neg_y_bore",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            15.9124,
+            -1.6725
+          ],
+          [
+            14.0,
+            0.0
+          ],
+          [
+            15.9124,
+            1.6725
+          ],
+          [
+            15.5077,
+            3.9385
+          ],
+          [
+            14.7821,
+            6.1229
+          ],
+          [
+            13.7505,
+            8.1807
+          ],
+          [
+            12.4343,
+            10.0691
+          ],
+          [
+            9.8995,
+            9.8995
+          ],
+          [
+            10.0691,
+            12.4343
+          ],
+          [
+            8.1807,
+            13.7505
+          ],
+          [
+            6.1229,
+            14.7821
+          ],
+          [
+            3.9385,
+            15.5077
+          ],
+          [
+            1.6725,
+            15.9124
+          ],
+          [
+            0.0,
+            14.0
+          ],
+          [
+            -1.6725,
+            15.9124
+          ],
+          [
+            -3.9385,
+            15.5077
+          ],
+          [
+            -6.1229,
+            14.7821
+          ],
+          [
+            -8.1807,
+            13.7505
+          ],
+          [
+            -10.0691,
+            12.4343
+          ],
+          [
+            -9.8995,
+            9.8995
+          ],
+          [
+            -12.4343,
+            10.0691
+          ],
+          [
+            -13.7505,
+            8.1807
+          ],
+          [
+            -14.7821,
+            6.1229
+          ],
+          [
+            -15.5077,
+            3.9385
+          ],
+          [
+            -15.9124,
+            1.6725
+          ],
+          [
+            -14.0,
+            0.0
+          ],
+          [
+            -15.9124,
+            -1.6725
+          ],
+          [
+            -15.5077,
+            -3.9385
+          ],
+          [
+            -14.7821,
+            -6.1229
+          ],
+          [
+            -13.7505,
+            -8.1807
+          ],
+          [
+            -12.4343,
+            -10.0691
+          ],
+          [
+            -9.8995,
+            -9.8995
+          ],
+          [
+            -10.0691,
+            -12.4343
+          ],
+          [
+            -8.1807,
+            -13.7505
+          ],
+          [
+            -6.1229,
+            -14.7821
+          ],
+          [
+            -3.9385,
+            -15.5077
+          ],
+          [
+            -1.6725,
+            -15.9124
+          ],
+          [
+            -0.0,
+            -14.0
+          ],
+          [
+            1.6725,
+            -15.9124
+          ],
+          [
+            3.9385,
+            -15.5077
+          ],
+          [
+            6.1229,
+            -14.7821
+          ],
+          [
+            8.1807,
+            -13.7505
+          ],
+          [
+            10.0691,
+            -12.4343
+          ],
+          [
+            9.8995,
+            -9.8995
+          ],
+          [
+            12.4343,
+            -10.0691
+          ],
+          [
+            13.7505,
+            -8.1807
+          ],
+          [
+            14.7821,
+            -6.1229
+          ],
+          [
+            15.5077,
+            -3.9385
+          ]
+        ],
+        "depth": 16020,
+        "plane": "zx",
+        "x": 175,
+        "y": "=-(wing_root_y + 30 + 16020)"
+      }
+    },
+    {
+      "name": "tube_hot_neg_y_rifle",
+      "kind": "boolean",
+      "params": {
+        "operation": "subtract",
+        "target": "tube_hot_neg_y",
+        "tool": "tube_hot_neg_y_bore"
+      }
+    },
+    {
+      "name": "tube_hot_neg_y_row",
+      "kind": "pattern",
+      "params": {
+        "source": "tube_hot_neg_y",
+        "mode": "linear",
+        "count": 6,
+        "dx": 350,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_NegY"
+      }
+    },
+    {
+      "name": "tube_cold_neg_y",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 18,
+        "depth": 16020,
+        "plane": "zx",
+        "x": -175,
+        "z": 0,
+        "y": "=-(wing_root_y + 30 + 16020)",
+        "material": "aluminum_6061",
+        "role": "radiator",
+        "color": [
+          0.1569,
+          0.4314,
+          0.9216
+        ],
+        "assembly": "Radiator_Wing_NegY",
+        "layer": "fluid"
+      }
+    },
+    {
+      "name": "tube_cold_neg_y_bore",
+      "kind": "extrude",
+      "params": {
+        "profile": "polygon",
+        "points": [
+          [
+            15.9124,
+            -1.6725
+          ],
+          [
+            14.0,
+            0.0
+          ],
+          [
+            15.9124,
+            1.6725
+          ],
+          [
+            15.5077,
+            3.9385
+          ],
+          [
+            14.7821,
+            6.1229
+          ],
+          [
+            13.7505,
+            8.1807
+          ],
+          [
+            12.4343,
+            10.0691
+          ],
+          [
+            9.8995,
+            9.8995
+          ],
+          [
+            10.0691,
+            12.4343
+          ],
+          [
+            8.1807,
+            13.7505
+          ],
+          [
+            6.1229,
+            14.7821
+          ],
+          [
+            3.9385,
+            15.5077
+          ],
+          [
+            1.6725,
+            15.9124
+          ],
+          [
+            0.0,
+            14.0
+          ],
+          [
+            -1.6725,
+            15.9124
+          ],
+          [
+            -3.9385,
+            15.5077
+          ],
+          [
+            -6.1229,
+            14.7821
+          ],
+          [
+            -8.1807,
+            13.7505
+          ],
+          [
+            -10.0691,
+            12.4343
+          ],
+          [
+            -9.8995,
+            9.8995
+          ],
+          [
+            -12.4343,
+            10.0691
+          ],
+          [
+            -13.7505,
+            8.1807
+          ],
+          [
+            -14.7821,
+            6.1229
+          ],
+          [
+            -15.5077,
+            3.9385
+          ],
+          [
+            -15.9124,
+            1.6725
+          ],
+          [
+            -14.0,
+            0.0
+          ],
+          [
+            -15.9124,
+            -1.6725
+          ],
+          [
+            -15.5077,
+            -3.9385
+          ],
+          [
+            -14.7821,
+            -6.1229
+          ],
+          [
+            -13.7505,
+            -8.1807
+          ],
+          [
+            -12.4343,
+            -10.0691
+          ],
+          [
+            -9.8995,
+            -9.8995
+          ],
+          [
+            -10.0691,
+            -12.4343
+          ],
+          [
+            -8.1807,
+            -13.7505
+          ],
+          [
+            -6.1229,
+            -14.7821
+          ],
+          [
+            -3.9385,
+            -15.5077
+          ],
+          [
+            -1.6725,
+            -15.9124
+          ],
+          [
+            -0.0,
+            -14.0
+          ],
+          [
+            1.6725,
+            -15.9124
+          ],
+          [
+            3.9385,
+            -15.5077
+          ],
+          [
+            6.1229,
+            -14.7821
+          ],
+          [
+            8.1807,
+            -13.7505
+          ],
+          [
+            10.0691,
+            -12.4343
+          ],
+          [
+            9.8995,
+            -9.8995
+          ],
+          [
+            12.4343,
+            -10.0691
+          ],
+          [
+            13.7505,
+            -8.1807
+          ],
+          [
+            14.7821,
+            -6.1229
+          ],
+          [
+            15.5077,
+            -3.9385
+          ]
+        ],
+        "depth": 16020,
+        "plane": "zx",
+        "x": -175,
+        "y": "=-(wing_root_y + 30 + 16020)"
+      }
+    },
+    {
+      "name": "tube_cold_neg_y_rifle",
+      "kind": "boolean",
+      "params": {
+        "operation": "subtract",
+        "target": "tube_cold_neg_y",
+        "tool": "tube_cold_neg_y_bore"
+      }
+    },
+    {
+      "name": "tube_cold_neg_y_row",
+      "kind": "pattern",
+      "params": {
+        "source": "tube_cold_neg_y",
+        "mode": "linear",
+        "count": 6,
+        "dx": -350,
+        "dy": 0,
+        "dz": 0,
+        "assembly": "Radiator_Wing_NegY"
+      }
+    },
+    {
+      "name": "OISL_Turrets",
+      "kind": "assembly",
+      "params": {}
+    },
+    {
+      "name": "turret_fwd_a_base",
+      "kind": "cylinder",
+      "params": {
+        "radius": 180,
+        "height": 120,
+        "x": -1420,
+        "y": 1300,
+        "z": 2810.0,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_fwd_a_barrel",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 110,
+        "wall": 15,
+        "depth": 350,
+        "plane": "zx",
+        "x": -1420,
+        "z": 2980.0,
+        "y": 1125,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_fwd_a_lens",
+      "kind": "cylinder",
+      "params": {
+        "radius": 95,
+        "height": 6,
+        "axis": "y",
+        "x": -1420,
+        "y": 1463,
+        "z": 2980.0,
+        "material": "generic_equipment",
+        "role": "antenna",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_fwd_b_base",
+      "kind": "cylinder",
+      "params": {
+        "radius": 180,
+        "height": 120,
+        "x": -1420,
+        "y": -1300,
+        "z": 2810.0,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_fwd_b_barrel",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 110,
+        "wall": 15,
+        "depth": 350,
+        "plane": "zx",
+        "x": -1420,
+        "z": 2980.0,
+        "y": -1475,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_fwd_b_lens",
+      "kind": "cylinder",
+      "params": {
+        "radius": 95,
+        "height": 6,
+        "axis": "y",
+        "x": -1420,
+        "y": -1137,
+        "z": 2980.0,
+        "material": "generic_equipment",
+        "role": "antenna",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_aft_a_base",
+      "kind": "cylinder",
+      "params": {
+        "radius": 180,
+        "height": 120,
+        "x": -1420,
+        "y": 1300,
+        "z": -2810.0,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_aft_a_barrel",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 110,
+        "wall": 15,
+        "depth": 350,
+        "plane": "zx",
+        "x": -1420,
+        "z": -2980.0,
+        "y": 1125,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_aft_a_lens",
+      "kind": "cylinder",
+      "params": {
+        "radius": 95,
+        "height": 6,
+        "axis": "y",
+        "x": -1420,
+        "y": 1463,
+        "z": -2980.0,
+        "material": "generic_equipment",
+        "role": "antenna",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_aft_b_base",
+      "kind": "cylinder",
+      "params": {
+        "radius": 180,
+        "height": 120,
+        "x": -1420,
+        "y": -1300,
+        "z": -2810.0,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_aft_b_barrel",
+      "kind": "extrude",
+      "params": {
+        "profile": "circle",
+        "radius": 110,
+        "wall": 15,
+        "depth": 350,
+        "plane": "zx",
+        "x": -1420,
+        "z": -2980.0,
+        "y": -1475,
+        "material": "aluminum_6061",
+        "role": "antenna",
+        "color": [
+          0.1373,
+          0.1373,
+          0.1569
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    },
+    {
+      "name": "turret_aft_b_lens",
+      "kind": "cylinder",
+      "params": {
+        "radius": 95,
+        "height": 6,
+        "axis": "y",
+        "x": -1420,
+        "y": -1137,
+        "z": -2980.0,
+        "material": "generic_equipment",
+        "role": "antenna",
+        "color": [
+          0.0,
+          0.7843,
+          1.0
+        ],
+        "assembly": "OISL_Turrets"
+      }
+    }
+  ]
+}

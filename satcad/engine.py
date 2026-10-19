@@ -67,7 +67,7 @@ class DesignError(ValueError):
 # kind -> {param: default}.  REQ marks a parameter you must always provide.
 REQ = "__required__"
 _POSE = dict(x=0.0, y=0.0, z=0.0, rx=0.0, ry=0.0, rz=0.0)
-_COMMON = dict(material="aluminum_6061", role="structure", color=None, notes="", assembly=None)
+_COMMON = dict(material="aluminum_6061", role="structure", color=None, notes="", assembly=None, layer=None)   # layer: a label for X-ray display and grouping
 SCHEMAS: dict[str, dict] = {
     "chassis": {**_COMMON, "role": "chassis", "length": REQ, "width": REQ, "height": REQ, "wall": 0.0,
                 "internal_mass_kg": 0.0, "fillet": 0.0, "chamfer": 0.0, **_POSE},

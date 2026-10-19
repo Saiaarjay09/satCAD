@@ -189,6 +189,48 @@ Axes: **Z** is the direction of flight, **Y** points away from the Sun (the radi
 The file was made by a script, `generate_orbital_node_assembly.py` (run with Python, optional): it shows how to build a large design from code, and you can run it with different numbers
 (`--set NUM_SERVER_BLADES=12`) to make your own variant and open that. Your own designs work the same way: save them in the designs folder and open them later.
 
+### 6b. The heavy orbital node, and X-Ray
+
+A second example, **`heavy_orbital_node.json`** in the same folder, is the large version: a 3.5 x 3.5 x 5.5 m hollow bus holding **16 server trays**, with three colour-coded
+schematic systems routed through the corridors beside the trays and two 16 m radiator wings (**320 bodies, about 19 t, no overlaps**). It is also an ordinary file: **Home -> Open** it.
+
+| Colour | Assembly | What is in it |
+|---|---|---|
+| orange | `HV_Power_Schematic` | solar regulators, four Li-Ion battery banks near the base, 48 V DC busbars (40 x 10 mm) feeding every tray |
+| cyan | `Optical_Data_Schematic` | core switches, EDFAs, 12 mm fibre conduits from the four laser turrets to the racks, the radiation-shielded flight computer |
+| red and blue | `MPFL_Fluid_Schematic` | accumulators, pumps, manifolds: red carries hot fluid out to the radiators, blue brings sub-cooled fluid back |
+
+![The heavy orbital node, solid](howto/21_heavy_solid.png)
+
+Every body belongs to a **layer** (a setting in the Property Editor: `shell`, `power`, `optical` or `fluid`). Layers are what X-Ray uses:
+
+1. Open the **View** tab and click **X-Ray**. Everything on the `shell` layer (the hull, the server trays and the radiator skins) becomes **85% transparent**; the power, optical and
+   fluid loops stay fully solid, so you can follow a pipe or a busbar through the whole bus. Click it again to turn it off.
+2. Clicking in the 3D view passes through see-through parts, so you select the cable or pipe inside rather than the hull around it.
+3. **Show All** (next to X-Ray) brings back anything you hid. In the Part Navigator each assembly row now has its own tick box: untick `Radiator_Wings` to hide both 16 m wings at once, and
+   the row shows a partial tick when only some of its parts are hidden.
+
+![X-Ray: hull and racks see-through, the three loops solid](howto/22_heavy_xray.png)
+
+X-Ray works on any design: give parts the layer `shell` and they become see-through. If nothing is on that layer satCAD tells you instead of doing nothing silently.
+
+**Three numbers drive the whole model.** With nothing selected, the Property Editor shows them under *Model parameters*; change one and press Enter and everything rebuilds (about a quarter of a second):
+
+![The three model parameters](howto/23_heavy_parameters.png)
+
+| Parameter | Meaning | Allowed |
+|---|---|---|
+| `BUS WIDTH MM` | width of the square bus (the wings move out with it) | 3500 to 6000 |
+| `TRAY PITCH MM` | centre-to-centre distance between the 16 server trays | 100 to 280 |
+| `FIN RIDGE ANGLE DEG` | opening angle of the trapezoidal ridges on the radiator skins | 40 to 170 |
+
+Numbers outside the range are refused with the reason rather than producing a broken model. To make your own variant from code, run
+`python generate_heavy_orbital_node.py --set TRAY_PITCH_MM=200 --name my_node` (saved into the designs folder) and open the result.
+
+**What it does not do, honestly.** The 35 mm bus wall is modelled as a plain solid wall, not an isogrid pattern. The corridor beside the trays is 650 mm measured from the *outer* skin
+(615 mm of clear space inside along X, 815 mm along Y). The "30 mm" manifolds are modelled as radius 30. The pipes, pumps and electronics are schematic shapes for layout and clash checking:
+they are not flight hardware and there is no flow, thermal or electrical analysis behind them.
+
 ---
 
 ## 7. Motion Studio: making things move

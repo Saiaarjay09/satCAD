@@ -108,6 +108,24 @@ def capture_dialog(path: str):
         cls.exec = fake_exec
 
 
+def heavy_section() -> None:
+    """Section 6b: the heavy orbital node, solid and in X-Ray. `python tools/make_howto_images.py --heavy` redraws only these."""
+    win, s = new_window((1600, 960))
+    s.open(ROOT / "sattelite designs" / "heavy_orbital_node.json")
+    win.viewport.set_view("iso")
+    win.navigator._items["Radiator_Wings"].setCheckState(0, Qt.Unchecked)                # the wings are 16 m long each: hide them to see the bus
+    win.viewport.fit()
+    win.viewport.zoom_by(1.3)
+    s.select(None)
+    grab_window(win, "21_heavy_solid.png", [(rect_of(win, win.navigator), "assemblies", "br"), (rect_of(win, win.right), "BUS WIDTH MM, TRAY PITCH MM, FIN RIDGE ANGLE DEG", "br")])
+    save(win.right.grab(), "23_heavy_parameters.png")
+    win.set_xray(True)
+    win.ribbon.setCurrentIndex([win.ribbon.tabText(i) for i in range(win.ribbon.count())].index("View"))
+    settle()
+    grab_window(win, "22_heavy_xray.png", [(rect_of(win, win.xray_button), "View > X-Ray", "tr"), (rect_of(win, win.viewport), "hull and racks 85% see-through; power, optical and fluid loops stay solid")])
+    win.close()
+
+
 def main() -> None:
     # ---- 1. an empty window, annotated ---------------------------------------------------------------------------------------------
     win, s = new_window()
@@ -251,8 +269,12 @@ def main() -> None:
     settle(6)
     save(win.motion_dock.equations.grab(), "20_custom_equation_sliders.png")
     win.close()
+    heavy_section()
     print("done")
 
 
 if __name__ == "__main__":
-    main()
+    if "--heavy" in sys.argv:
+        heavy_section()
+    else:
+        main()

@@ -231,9 +231,14 @@ class Viewport(QWidget):
         self.ren.SetBackground(*theme.VIEWPORT_BOTTOM)
         self.ren.SetBackground2(*theme.VIEWPORT_TOP)
         vtkLightKit().AddLightsToRenderer(self.ren)
+        self.ren.SetUseDepthPeeling(1)                  # correct see-through rendering for X-ray (only costs anything when something is translucent)
+        self.ren.SetMaximumNumberOfPeels(6)
+        self.ren.SetOcclusionRatio(0.05)
+        self.rw_alpha = True
         self.rw = vtkRenderWindow()
         self.rw.SetOffScreenRendering(1)
         self.rw.SetMultiSamples(0)
+        self.rw.SetAlphaBitPlanes(1)
         self.rw.SetSize(640, 480)
         self.rw.AddRenderer(self.ren)
         self._picker = vtkPropPicker()
@@ -263,6 +268,7 @@ class Viewport(QWidget):
         self._groups: dict[str, list] = {}           # motion group -> part names
         self._group_matrix: dict[str, vtkMatrix4x4] = {}
         self._color_override: dict[str, tuple] = {}
+        self._opacity: dict[str, float] = {}
         self._empty_text = "Create a Block, Cylinder or Sphere from the Home tab"
 
     # ---- rendering -------------------------------------------------------------------------------------------------------------------
@@ -403,6 +409,10 @@ class Viewport(QWidget):
             wire = self._mode == "wireframe"
             surf.SetVisibility(visible and not wire)
             self._edges[name].SetVisibility(visible and self._mode != "shaded")
+            op = self._opacity.get(name, 1.0)
+            surf.GetProperty().SetOpacity(op)
+            self._edges[name].GetProperty().SetOpacity(max(op, 0.35) if op < 1.0 else 1.0)
+            surf.SetPickable(op >= 0.5)                                    # you can click through see-through parts (X-ray) to what is inside
             sel = name == self._selected
             surf.GetProperty().SetColor(*(theme.SELECT_COLOR if sel else self._color_override.get(name, self._base_color[name])))
             self._edges[name].GetProperty().SetColor(*((1.0, 0.85, 0.3) if sel else theme.EDGE_COLOR))
@@ -450,6 +460,18 @@ class Viewport(QWidget):
             m = self._group_matrix.get(g)
             if m is not None:
                 m.DeepCopy(np.asarray(arr, dtype=float).ravel().tolist())
+        self.request_render()
+
+    def set_part_opacity(self, opacity: dict[str, float] | None) -> None:
+        """Make some parts see-through: {part name: opacity 0..1}. Parts not listed are opaque. None / {} restores everything."""
+        self._opacity = {k: float(x) for k, x in (opacity or {}).items()}
+        self._apply_state()
+        self.request_render()
+
+    def set_hidden(self, hidden: set) -> None:
+        """Replace the set of hidden parts in one go (a whole assembly can be hidden at once)."""
+        self._hidden = set(hidden)
+        self._apply_state()
         self.request_render()
 
     def set_part_colors(self, colors: dict[str, tuple] | None) -> None:

@@ -139,6 +139,7 @@ class MainWindow(QMainWindow):
         self._wire()
         self._fit_next = True
         self.picked_face = None                                # (body name, face info) after a click in Face mode
+        self.xray = False
         self._refresh_all()
         self._update_title()
 
@@ -220,6 +221,10 @@ class MainWindow(QMainWindow):
                                ("Right", "right", "view_right"), ("Left", "left", "view_left")):
             g.add_button(label, ic, lambda k=key: self.viewport.set_view(k), f"{label} view")
         g.add_button("Fit", "fit", lambda: self.viewport.fit(), "Zoom to fit (F)")
+        g = view.add_group("Layers")
+        self.xray_button = g.add_button("X-Ray", "wire", lambda: self.set_xray(not self.xray), "See through the hull, server trays and radiator skins (85% transparent) so the "
+                                                                                                "power, optical and fluid schematics show at full opacity. Needs parts on the 'shell' layer.", checkable=True)
+        g.add_button("Show All", "shaded", self.show_all_parts, "Show every part again (after hiding assemblies or parts)")
         g = view.add_group("Display")
         g.add_button("Shaded + Edges", "shaded", lambda: self.viewport.set_mode("shaded_edges"))
         g.add_button("Shaded", "shaded", lambda: self.viewport.set_mode("shaded"))
@@ -302,6 +307,8 @@ class MainWindow(QMainWindow):
         nav.selected.connect(s.select)
         nav.visibility_changed.connect(v.set_visible)
         nav.delete_requested.connect(s.remove)
+        if hasattr(v, "set_hidden"):
+            nav.hidden_changed.connect(v.set_hidden)
         if hasattr(v, "body_clicked"):
             v.body_clicked.connect(lambda part, _ctrl: s.select(self._feature_for(part)))
             v.context_requested.connect(self._viewport_menu)
@@ -330,6 +337,33 @@ class MainWindow(QMainWindow):
         self.show_motion()
         self.motion_dock.joints.add(kind)
 
+    # ---- layers: X-ray and bulk visibility -------------------------------------------------------------------------------------------
+    XRAY_OPACITY = 0.15                                              # 85% transparent
+
+    def xray_map(self) -> dict:
+        """{part: opacity} for X-ray mode: parts on the 'shell' layer (hull, trays, skins) become 85% transparent; everything else stays solid."""
+        if not self.xray:
+            return {}
+        return {n: self.XRAY_OPACITY for n, p in self.session.design.parts.items() if p.params.get("layer") == "shell"}
+
+    def _apply_xray(self) -> None:
+        if hasattr(self.viewport, "set_part_opacity"):
+            self.viewport.set_part_opacity(self.xray_map())
+
+    def set_xray(self, on: bool) -> None:
+        self.xray = bool(on)
+        if hasattr(self, "xray_button"):
+            self.xray_button.setChecked(self.xray)
+        self._apply_xray()
+        if self.xray and not self.xray_map():
+            self.session.message.emit("warn", "X-Ray: no parts are on the 'shell' layer, so nothing changed. Set a part's 'layer' to shell in the Property Editor "
+                                              "(designs such as the heavy orbital node already do this).")
+        else:
+            self.session.message.emit("info", "X-Ray on: shell parts are 85% transparent, everything else is solid." if self.xray else "X-Ray off.")
+
+    def show_all_parts(self) -> None:
+        self.navigator.show_all()
+
     def set_filter(self, mode: str) -> None:
         """Selection filter: 'body' or 'face'."""
         self.picked_face = None
@@ -352,6 +386,7 @@ class MainWindow(QMainWindow):
         self.picked_face = None
         fit, self._fit_next = self._fit_next, False
         self.viewport.set_design(self.session.design, hidden=self.navigator.hidden, selected=self._part_for(self.session.selected), fit=fit)
+        self._apply_xray()
         self.undo_action.setEnabled(self.session.can_undo)
         self.redo_action.setEnabled(self.session.can_redo)
         self._update_title()

@@ -25,8 +25,10 @@ BASE_NAME = {"box": "block", "chassis": "chassis", "cylinder": "cylinder", "sphe
 MODIFIERS = {"shell", "fillet_edges", "hole", "cutout", "boolean"}
 
 
-def feature_label(kind: str, raw: dict, number: int) -> str:
-    """The name shown in the Part Navigator, NX style: 'Block(1)', 'Edge Blend(3)', 'Subtract(4)'."""
+def feature_label(kind: str, raw: dict, number: int, name: str | None = None) -> str:
+    """The name shown in the Part Navigator, NX style: 'Block(1)', 'Edge Blend(3)', 'Subtract(4)'. An assembly shows its own name."""
+    if kind == "assembly" and name:
+        return name
     if kind == "boolean":
         noun = str(raw.get("operation", "Boolean")).capitalize()
     elif kind == "fillet_edges" and raw.get("chamfer") not in (None, 0, 0.0, "") and raw.get("radius") in (None, 0, 0.0, ""):
@@ -84,7 +86,7 @@ class Session(QObject):
 
     def labels(self) -> dict[str, str]:
         nums = self.feature_numbers()
-        return {n: feature_label(f.kind, f.raw, nums[n]) for n, f in self.design.features.items()}
+        return {n: feature_label(f.kind, f.raw, nums[n], n) for n, f in self.design.features.items()}
 
     def body_names(self) -> list[str]:
         """Names of the parts that exist right now (what a Boolean or Blend can act on)."""
