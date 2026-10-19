@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDialogButtonBo
 from PySide6.QtCore import Qt
 
 from ..engine import DesignError
+from ..paths import designs_dir
 from .properties import CHOICES, parse_value
 from .session import Session
 
@@ -232,7 +233,7 @@ class Commands:
     def open(self) -> None:
         if not self.w.confirm_discard():
             return
-        path, _ = QFileDialog.getOpenFileName(self.w, "Open part", str(Path.cwd()), "SatCAD parts (*.json);;All files (*)")
+        path, _ = QFileDialog.getOpenFileName(self.w, "Open part", str(designs_dir()), "SatCAD parts (*.json);;All files (*)")
         if path:
             self.s.open(path)
 
@@ -242,7 +243,7 @@ class Commands:
         return self.s.save()
 
     def save_as(self) -> bool:
-        path, _ = QFileDialog.getSaveFileName(self.w, "Save part", str(Path.cwd() / f"{self.s.design.name}.json"), "SatCAD parts (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self.w, "Save part", str(designs_dir() / f"{self.s.design.name}.json"), "SatCAD parts (*.json)")
         return bool(path) and self.s.save(path)
 
     def export(self, fmt: str) -> None:
@@ -251,7 +252,7 @@ class Commands:
             self.s.message.emit("warn", "Nothing to export: the part is empty.")
             return
         names = {"step": "STEP", "stl": "STL (mesh)", "glb": "GLB (web / AR)"}
-        path, _ = QFileDialog.getSaveFileName(self.w, f"Export {names[fmt]}", str(Path.cwd() / f"{d.name}.{fmt}"), f"{names[fmt]} (*.{fmt})")
+        path, _ = QFileDialog.getSaveFileName(self.w, f"Export {names[fmt]}", str(designs_dir() / f"{d.name}.{fmt}"), f"{names[fmt]} (*.{fmt})")
         if not path:
             return
         try:

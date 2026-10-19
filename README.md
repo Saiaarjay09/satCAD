@@ -175,8 +175,25 @@ nothing is selected: `NUM_SERVER_BLADES` (1 to 18), `RADIATOR_SPAN_MM`, `SOLAR_S
 
 ---
 
+## How to use satCAD
+
+**New here? Read the illustrated guide: [docs/HOW_TO_USE.md](docs/HOW_TO_USE.md).** It walks through the app step by step with screenshots: installing, the five areas of the
+window, making your first part, Boolean operations and holes, loading the Orbital-Node-Alpha satellite, Motion Studio (equations, sliders, joints, timeline), saving and exporting.
+
+| The window | Inside the satellite | Motion Studio |
+|---|---|---|
+| ![The satCAD window, five areas numbered](docs/howto/01_overview.png) | ![Orbital-Node-Alpha with the hull hidden](docs/howto/12_alpha_hull_hidden.png) | ![Equations, sliders and live plots](docs/howto/14_motion_studio.png) |
+
+**Where designs are saved.** Every satellite design (STEP files and the editable `.json` recipes) lives in one folder, [`sattelite designs`](sattelite%20designs/) at the top of this
+repository. The app's Open / Save / Export dialogs start there, the Claude connector's `save_design` / `export_design` write there, and
+`python generate_orbital_node_assembly.py --step name.step` puts a bare file name there. (The folder name is spelled the way the project owner chose it; set the environment
+variable `SATCAD_DESIGNS` to use another folder. A packaged app uses `Documents/satCAD/sattelite designs`.)
+
+---
+
 ## Contents
 
+0. [How to use satCAD (illustrated guide)](#how-to-use-satcad)
 1. [What you can do with it](#1-what-you-can-do-with-it)
 2. [Install](#2-install)
 3. [Use it](#3-use-it), including [building the orbital AI datacentre](#3f-build-the-orbital-ai-datacentre-build_satellitepy)
@@ -241,7 +258,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`375 passed` and the path of the connector.
+`384 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -579,6 +596,7 @@ Open-source-CAD-software/
 ├── orbital_datacentre_model.py  same as build_satellite.py under the name used in the original brief (it just runs it)
 ├── main.py                   starts the desktop application (Qt + VTK):  python main.py
 ├── requirements-gui.txt      the extra libraries for the desktop application (PySide6, vtk)
+├── sattelite designs/          ALL saved satellite designs: STEP files and .json recipes (see its README)
 ├── generate_orbital_node_assembly.py   builds the detailed Orbital-Node-Alpha satellite (6 sub-assemblies, 405 bodies, STEP export)
 ├── studio_app.py             entry point of the SatCAD Studio app
 ├── studio.spec / studio.iss  recipes that package Studio (PyInstaller) and make the Windows installer (Inno Setup)
@@ -611,6 +629,7 @@ Open-source-CAD-software/
 │   │   ├── motion_presets.py the four Orbital-Node-Alpha mechanisms
 │   │   ├── theme.py          the dark theme
 │   │   └── icons.py          icons drawn in code (no image files)
+│   ├── paths.py              where designs are saved (the 'sattelite designs' folder)
 │   ├── studio.py             SatCAD Studio: the local editor server (parts, variables, check, analyse, open/save/export)
 │   ├── static/               studio.html (the editor page) and the bundled three.js 3D library, so Studio works offline
 │   ├── fem.py                the shell finite-element solver (BETA): modal and static analysis of flat-plate structures
@@ -637,6 +656,7 @@ Open-source-CAD-software/
 │   ├── test_materials.py     the materials database
 │   ├── test_fem.py           the FE solver against closed-form plate, membrane and vibration solutions
 │   ├── test_fem_design.py    CAD design to FE model: ties, supports, mass match, loose parts, reactions
+│   ├── test_paths_and_docs.py  the designs-folder rule (every STEP file lives there) and the how-to guide's links and pictures
 │   ├── test_motion.py        Motion Studio: expressions, solver, presets, playback, docks
 │   ├── test_orbital_node_assembly.py  the Alpha generator: structure, parameters, geometry, colours, STEP
 │   ├── test_gui.py           the desktop application, headless: session / undo, navigator, property editor, viewport geometry, camera and mouse, window wiring
@@ -644,10 +664,13 @@ Open-source-CAD-software/
 │   ├── test_server.py        launches the real server and talks to it like Claude does
 │   └── test_build_satellite.py  checks the satellite: subsystems, hinges and stowing, bolted optics, validation, analysis, command line
 │
+├── tools/make_howto_images.py   captures the annotated screenshots for the how-to guide from the real app
 ├── tools/smoke_test_app.py   starts a packaged Studio and proves it works (used by the build)
 ├── .github/workflows/studio-release.yml   builds the Mac and Windows apps and publishes a release when a version tag is pushed
 │
 └── docs/
+    ├── HOW_TO_USE.md                     the illustrated step-by-step guide
+    ├── howto/                            its screenshots (made by tools/make_howto_images.py)
     ├── RELEASE_NOTES.md                  the text shown on each GitHub release
     ├── NX_BENCHMARK.md                   line-by-line scoreboard against Siemens NX's publicly described capabilities
     ├── ROADMAP.md                        what SatCAD covers today vs professional CAD, and the plan to close the gap
@@ -823,7 +846,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-375 tests. They include:
+384 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.

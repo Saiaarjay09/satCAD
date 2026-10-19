@@ -3,8 +3,8 @@
 ORBITAL-NODE-ALPHA: detailed multi-body assembly of the AI datacentre satellite, built with the satCAD engine (OpenCASCADE kernel).
 
     python generate_orbital_node_assembly.py                       # build, check, print a report
-    python generate_orbital_node_assembly.py --step alpha.step     # ...and export STEP (colours and assembly names are written)
-    python generate_orbital_node_assembly.py --json alpha.json     # ...and save the editable parametric recipe
+    python generate_orbital_node_assembly.py --step alpha.step     # ...and export STEP into the 'sattelite designs' folder
+    python generate_orbital_node_assembly.py --json alpha.json     # ...and save the editable parametric recipe there too
     python generate_orbital_node_assembly.py --set NUM_SERVER_BLADES=12 --set RADIATOR_SPAN_MM=10000
 
 In the desktop app:  Assemblies tab -> "Orbital-Node-Alpha" builds this model into the open part, every sub-assembly appearing in the Part Navigator.
@@ -34,6 +34,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from satcad import Design, DesignError  # noqa: E402
+from satcad.paths import designs_dir, in_designs  # noqa: E402
 
 # ==========================================================================================================
 #  >>> THE FOUR HEADLINE PARAMETERS (also model variables: editable in the app) <<<
@@ -311,8 +312,8 @@ def _parse(items) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Build the Orbital-Node-Alpha assembly.")
     ap.add_argument("--set", action="append", metavar="NAME=VALUE", help="override NUM_SERVER_BLADES, RADIATOR_SPAN_MM, SOLAR_SPAN_MM, BUS_WALL_THICKNESS or BLADE_GAP_MM")
-    ap.add_argument("--step", metavar="FILE", help="export a STEP file (colours and assembly structure included)")
-    ap.add_argument("--json", metavar="FILE", help="save the parametric recipe")
+    ap.add_argument("--step", metavar="FILE", help="export a STEP file (a bare file name is saved in the 'sattelite designs' folder)")
+    ap.add_argument("--json", metavar="FILE", help="save the parametric recipe (a bare file name goes in the 'sattelite designs' folder)")
     args = ap.parse_args(argv)
     t0 = time.time()
     try:
@@ -323,11 +324,14 @@ def main(argv=None) -> int:
     print(report(d))
     print(f"(built in {time.time() - t0:.1f} s)")
     if args.json:
-        d.save(args.json)
-        print("Saved", args.json)
+        out = in_designs(args.json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        d.save(out)
+        print("Saved", out)
     if args.step:
-        out = Path(args.step)
-        info = d.export(out.parent if str(out.parent) else ".", out.stem, ["step"])
+        out = in_designs(args.step)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        info = d.export(out.parent, out.stem, ["step"])
         Path(info["step"]["path"]).replace(out) if Path(info["step"]["path"]) != out else None
         print("Exported", out)
     return 0

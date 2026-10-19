@@ -24,7 +24,13 @@ from .power import size_solar_array as _size_solar_array
 from .thermal import size_radiator as _size_radiator
 
 OUT_DIR = Path(os.environ.get("SATCAD_OUT", Path.cwd() / "cad_output")).resolve()
-AUTOSAVE = OUT_DIR / "designs" / "current.json"
+AUTOSAVE = OUT_DIR / "designs" / "current.json"                  # internal scratch copy, not one of your designs
+# Exports and saved designs go to the shared "sattelite designs" folder, unless SATCAD_OUT is set (then they stay under that folder)
+if os.environ.get("SATCAD_OUT"):
+    EXPORT_DIR, SAVE_DIR = OUT_DIR / "exports", OUT_DIR / "designs"
+else:
+    from .paths import designs_dir
+    EXPORT_DIR = SAVE_DIR = designs_dir(create=False)
 
 INSTRUCTIONS = """\
 You are the user's spacecraft CAD assistant. The user is a beginner and has never used CAD: explain what you are
@@ -547,7 +553,7 @@ def export_design(basename: str | None = None, formats: list[str] | None = None)
     base = basename or design.name
     if not NAME_RE.match(base):
         raise DesignError("basename may only use letters, digits, '_' and '-'.")
-    return design.export(OUT_DIR / "exports", base, tuple(formats or ("step", "stl", "glb")))
+    return design.export(EXPORT_DIR, base, tuple(formats or ("step", "stl", "glb")))
 
 
 _FE_NOTE = ("BETA shell solver for concept-stage checks. Flat plates only: holes, fillets, ribs, joint flexibility, curved shells and "
@@ -633,7 +639,7 @@ def export_bom(filename: str | None = None) -> dict:
     base = filename or f"{design.name}_bom"
     if not NAME_RE.match(base):
         raise DesignError("filename may only use letters, digits, '_' and '-'.")
-    path = design.export_bom(OUT_DIR / "exports" / f"{base}.csv")
+    path = design.export_bom(EXPORT_DIR / f"{base}.csv")
     rows = design.bom()
     return dict(path=path, parts=len(rows), total_mass_kg=round(sum(r["mass_kg"] for r in rows), 3), rows=rows)
 
@@ -662,7 +668,7 @@ def save_design(filename: str | None = None) -> str:
     base = filename or design.name
     if not NAME_RE.match(base):
         raise DesignError("filename may only use letters, digits, '_' and '-'.")
-    return design.save(OUT_DIR / "designs" / f"{base}.json")
+    return design.save(SAVE_DIR / f"{base}.json")
 
 
 @mcp.tool()
@@ -670,9 +676,9 @@ def load_design(filename: str) -> dict:
     """Load a previously saved design by name (see save_design)."""
     if not NAME_RE.match(filename):
         raise DesignError("filename may only use letters, digits, '_' and '-'.")
-    path = OUT_DIR / "designs" / f"{filename}.json"
+    path = SAVE_DIR / f"{filename}.json"
     if not path.exists():
-        found = sorted(p.stem for p in (OUT_DIR / "designs").glob("*.json")) if (OUT_DIR / "designs").exists() else []
+        found = sorted(p.stem for p in SAVE_DIR.glob("*.json")) if SAVE_DIR.exists() else []
         raise DesignError(f"No saved design '{filename}'. Saved designs: {found or 'none'}.")
     design.load(path)
     _autosave()
