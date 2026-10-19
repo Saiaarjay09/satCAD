@@ -175,3 +175,30 @@ def test_solar_sizing_matches_hand_calculation():
         size_solar_array(1000)["usable_w_per_m2"] / 2, abs=0.1)                               # cos(60) = 0.5
     with pytest.raises(ValueError):
         size_solar_array(-5)
+
+
+# ---- batch mode and the faster neighbour search -------------------------------------------------------------------------------------
+def test_batch_rebuilds_once_and_rolls_back_on_failure():
+    d = Design("b")
+    rebuilds = []
+    original = d.rebuild
+    d.rebuild = lambda: (rebuilds.append(1), original())[1]
+    with d.batch():
+        for i in range(5):
+            d.add("box", f"b{i}", length=10, width=10, height=10, x=i * 20)
+        d.set_variable("k", 3)
+    assert len(rebuilds) == 1 and len(d.parts) == 5 and d.variables == {"k": 3}
+    with pytest.raises(DesignError):
+        with d.batch():
+            d.add("box", "ok", length=10, width=10, height=10)
+            d.add("box", "bad", length=-1, width=10, height=10)                  # only discovered when the batch rebuilds
+    assert "ok" not in d.features and "bad" not in d.features and len(d.parts) == 5
+
+
+def test_floating_part_distance_matches_the_exhaustive_answer():
+    d = Design("f")
+    d.add("box", "a", length=10, width=10, height=10)
+    d.add("box", "b", x=100, length=10, width=10, height=10)
+    d.add("box", "c", x=300, length=10, width=10, height=10)
+    floating = {f["part"]: f["nearest_gap_mm"] for f in d.check()["floating_parts"]}
+    assert floating == {"a": 90.0, "b": 90.0, "c": 190.0}

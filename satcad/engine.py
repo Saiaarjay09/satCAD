@@ -34,6 +34,8 @@ Feature types
 """
 from __future__ import annotations
 
+import contextlib
+import copy
 import json
 import math
 import re
@@ -213,6 +215,7 @@ def _rounded_path(pts: list, radius: float):
 class Design:
     def __init__(self, name: str = "satellite"):
         self.name = name
+        self._batch_depth = 0
         self.features: dict[str, Feature] = {}
         self.parts: dict[str, Part] = {}
         self.variables: dict[str, object] = {}
@@ -292,6 +295,8 @@ class Design:
         old = self.variables.get(name, None)
         had = name in self.variables
         self.variables[name] = value
+        if self._batch_depth:
+            return {}
         try:
             self.rebuild()
         except Exception:
@@ -1060,6 +1065,28 @@ class Design:
     def _name_taken(self, name: str) -> bool:
         return name in self.features or name in self.parts or name in self.variables
 
+    @contextlib.contextmanager
+    def batch(self):
+        """Add or edit many features while rebuilding only once, at the end (a design with hundreds of features is otherwise rebuilt after
+        every single add). If the final rebuild fails, the design returns to exactly how it was before the batch and the error is raised."""
+        if self._batch_depth:                         # nested: the outermost batch does the work
+            yield
+            return
+        snapshot = copy.deepcopy(self.to_json())
+        self._batch_depth = 1
+        try:
+            yield
+        except BaseException:
+            self._batch_depth = 0
+            self.load_data(snapshot)
+            raise
+        self._batch_depth = 0
+        try:
+            self.rebuild()
+        except BaseException:
+            self.load_data(snapshot)
+            raise
+
     def add(self, kind: str, name: str, **params) -> dict:
         if not NAME_RE.match(name):
             raise DesignError("Names may only use letters, digits, '_' and '-' (max 40 characters).")
@@ -1068,6 +1095,8 @@ class Design:
         if kind not in SCHEMAS:
             raise DesignError(f"Unknown part type '{kind}'. Choose one of: {', '.join(SCHEMAS)}.")
         self.features[name] = Feature(name, kind, dict(params))
+        if self._batch_depth:
+            return dict(name=name, type=kind, deferred=True)
         try:
             self.rebuild()
         except Exception:
@@ -1084,6 +1113,8 @@ class Design:
         for k in ("kind", "name"):
             raw.pop(k, None)
         self.features[name] = Feature(name, old.kind, raw)
+        if self._batch_depth:
+            return dict(name=name, deferred=True)
         try:
             self.rebuild()
         except Exception:
@@ -1349,7 +1380,7 @@ class Design:
                 candidates = [m for m in names if m != n and near(n, m, touch_tolerance_mm)]
                 if any(self.parts[n].solid.distance_to(self.parts[m].solid) <= touch_tolerance_mm for m in candidates):
                     continue                                        # touches a neighbour: not floating
-                nearest = min(self.parts[n].solid.distance_to(self.parts[m].solid) for m in names if m != n)
+                nearest = self._nearest_gap(n, names, boxes)
                 if nearest > touch_tolerance_mm:
                     floating.append(dict(part=n, nearest_gap_mm=_r(nearest, 2)))
         ok = not overlaps
@@ -1357,6 +1388,20 @@ class Design:
                     advice=("No overlapping parts." if ok else "Parts overlap: move them apart or shrink one.")
                     + (" Floating parts don't touch anything: add a gap=0 attachment or a connecting part."
                        if floating else ""))
+
+    def _nearest_gap(self, name: str, names: list, boxes: dict) -> float:
+        """Distance from one part to its nearest neighbour. Candidates are tried in order of bounding-box distance and the search stops as
+        soon as no remaining part can be closer, so a big assembly does not need a solid-to-solid distance for every pair."""
+        def box_gap(m):
+            (alo, ahi), (blo, bhi) = boxes[name], boxes[m]
+            return math.sqrt(sum(max(0.0, alo[k] - bhi[k], blo[k] - ahi[k]) ** 2 for k in range(3)))
+        order = sorted((m for m in names if m != name), key=box_gap)
+        best = math.inf
+        for m in order:
+            if box_gap(m) >= best:
+                break
+            best = min(best, self.parts[name].solid.distance_to(self.parts[m].solid))
+        return best
 
     @staticmethod
     def _thread_allowance(screw: "Part") -> float:
