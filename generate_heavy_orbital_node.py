@@ -6,6 +6,7 @@ HEAVY-CLASS ORBITAL NODE: "Orbital-Node-Alpha" AI-datacentre satellite for a hea
     python generate_heavy_orbital_node.py                      # build, check, print a report, and save into 'sattelite designs'
     python generate_heavy_orbital_node.py --set TRAY_PITCH_MM=250 --set FIN_RIDGE_ANGLE_DEG=110
     python generate_heavy_orbital_node.py --no-save            # build and report only
+    python generate_heavy_orbital_node.py --diagrams           # also write the wiring / cooling / optical diagrams and the 3D routing view
 
 This is a stand-alone design script. It is NOT built into the satCAD app: it writes `heavy_orbital_node.json` (open it with the app's Open button) and
 `heavy_orbital_node.step` (for other CAD programs) into the 'sattelite designs' folder. In the app, View > X-Ray makes the hull, server trays and
@@ -27,6 +28,11 @@ ASSEMBLIES
     MPFL_Fluid_Schematic   (red/blue) two redundant loops: accumulator, 2 pumps, hot (red) and cold (blue) manifolds, 32 feeders each, radiator lines
     Radiator_Wings         two wings 16000 x 4200: ridged trapezoidal skins, 12 main tubes each with 8 internal micro-ridges, headers, truss boom
     OISL_Turrets           four external laser terminals
+
+SYSTEMS (wiring, tubing, fibre): the file also carries a netlist (satcad.systems) saying what connects to what: 48 V busbar taps and cables, the optical backbone,
+and two redundant ammonia loops with pump skids. Cables and the pump pipes are routed automatically around the equipment and drawn as swept tubes in the model;
+the app's Systems tab draws the diagrams and checks the design (current density, voltage drop, flow, pump head, radiator, fibre bends and loss, clashes).
+Loads, pump heads and fluid properties are ASSUMED concept values.
 
 HONEST NOTES
   * The 650 mm perimeter corridor is measured from the OUTER skin: with the 35 mm wall the clear corridor beside the trays is 615 mm in X (815 mm in Y).
@@ -63,6 +69,7 @@ COLORS = {                   # RGB 0..255
     "hull": (200, 204, 210), "tray": (20, 60, 30), "power": (255, 140, 0), "power_dark": (210, 105, 0), "optical": (0, 200, 255), "optical_dark": (0, 150, 200),
     "red": (225, 50, 40), "blue": (40, 110, 235), "white": (245, 245, 250), "black": (35, 35, 40), "silver": (192, 196, 204), "lens": (0, 200, 255),
 }
+RETURN_STOP = 1650                             # where each cold return line ends inside the hull (|Y|, mm)
 FLOOR_Z = -(HULL_LENGTH / 2) + WALL            # inner floor
 CEIL_Z = HULL_LENGTH / 2 - WALL
 
@@ -224,10 +231,10 @@ def fluid(b: B) -> None:
             b.add("cylinder", f"pump_{tag}{n}", A, "blue", L, radius=150, height=400, axis="z", x=x, y=y0, z=FLOOR_Z + 115 + 200, material="generic_equipment", role="schematic")
             b.add("box", f"pump_saddle_{tag}{n}", A, "silver", L, length=200, width=300, height=115, x=x, y=y0, z=FLOOR_Z + 57.5, material="aluminum_6061", role="schematic")
         b.add("cylinder", f"accumulator_{tag}", A, "blue", L, radius=300, height=800, axis="z", x=-800, y=y0, z=FLOOR_Z + 400, material="generic_equipment", role="schematic")
-        line_start = s * 1330 if s > 0 else "=-(wing_root_y - 30)"
         for kind, x, col in (("hot", 300, "red"), ("cold", -300, "blue")):                 # lines through the bus wall and boom to the wing root
-            b.add("extrude", f"{kind}_line_{tag}", A, col, L, profile="circle", radius=30, wall=2, depth="=wing_root_y - 30 - 1330", plane="zx", x=x, z=0,
-                  y=1330 if s > 0 else "=-(wing_root_y - 30)", material="stainless_316", role="schematic")
+            near = 1330 if kind == "hot" else RETURN_STOP                                       # the cold return stops at the pump skid, not at the manifold
+            b.add("extrude", f"{kind}_line_{tag}", A, col, L, profile="circle", radius=30, wall=2, depth=f"=wing_root_y - 30 - {near}", plane="zx", x=x, z=0,
+                  y=near if s > 0 else "=-(wing_root_y - 30)", material="stainless_316", role="schematic")
 
 
 # ==========================================================================================================
@@ -273,17 +280,191 @@ def turrets(b: B) -> None:
     b.asm("OISL_Turrets")
     for tag, s, y in (("fwd_a", 1, 1300), ("fwd_b", 1, -1300), ("aft_a", -1, 1300), ("aft_b", -1, -1300)):
         zf = s * HULL_LENGTH / 2
-        b.add("cylinder", f"turret_{tag}_base", "OISL_Turrets", "black", None, radius=180, height=120, x=-1420, y=y, z=zf + s * 60, material="aluminum_6061", role="antenna")
+        b.add("cylinder", f"turret_{tag}_base", "OISL_Turrets", "black", "optical", radius=180, height=120, x=-1420, y=y, z=zf + s * 60, material="aluminum_6061", role="antenna")
         zc = zf + s * (120 + 110)
-        b.add("extrude", f"turret_{tag}_barrel", "OISL_Turrets", "black", None, profile="circle", radius=110, wall=15, depth=350, plane="zx", x=-1420, z=zc, y=y - 175,
+        b.add("extrude", f"turret_{tag}_barrel", "OISL_Turrets", "black", "optical", profile="circle", radius=110, wall=15, depth=350, plane="zx", x=-1420, z=zc, y=y - 175,
               material="aluminum_6061", role="antenna")
-        b.add("cylinder", f"turret_{tag}_lens", "OISL_Turrets", "lens", None, radius=95, height=6, axis="y", x=-1420, y=y + 163, z=zc, material="generic_equipment", role="antenna")
+        b.add("cylinder", f"turret_{tag}_lens", "OISL_Turrets", "lens", "optical", radius=95, height=6, axis="y", x=-1420, y=y + 163, z=zc, material="generic_equipment", role="antenna")
+
+
+# ==========================================================================================================
+#  SYSTEMS: the netlist behind the schematics (what connects to what, and what each run is made of)
+# ==========================================================================================================
+TRAY_LOAD_W = 1200            # assumed electrical load of one server tray; all of it ends up as heat in its cold plate
+RADIATOR_AREA_M2 = 2 * FIN_SPAN * FIN_WIDTH / 1e6        # both faces of one wing, projected area (ridges not counted: conservative)
+
+
+def _copy(src: str, pattern: str, k: int) -> str:
+    """Name of copy k (1 to 16) of a linear pattern: copy 1 is the source part itself."""
+    return src if k == 1 else f"{pattern}_{k}"
+
+
+def netlist(d: Design):
+    """Build the Systems netlist for the node: 48 V power, the optical backbone and the two coolant loops. Ports are anchored to parts of the model."""
+    from satcad.systems import Systems
+    S = Systems("Orbital-Node-Alpha (heavy) systems")
+    S.assumptions.update(tray_load_w=TRAY_LOAD_W, note="Loads, pump heads and fluid properties are ASSUMED values for a concept study, not measured or flight data.")
+    trays = range(1, TRAYS + 1)
+    # ---- power ---------------------------------------------------------------------------------------------------------------
+    for i in (1, 2):
+        S.component(f"solar_regulator_{i}", "power", "regulator", part=f"solar_regulator_{i}", label=f"Solar regulator {i}", cols={"power": 0}, source_w=12000,
+                    source_group="regulator", ports={"OUT": {"at": "+z"}})
+    for i in (1, 2, 3, 4):
+        S.component(f"battery_bank_{i}", "power", "battery", part=f"battery_bank_{i}", label=f"Li-Ion bank {i}", cols={"power": 0}, source_w=6000, source_group="battery",
+                    ports={"BUS": {"at": "-y" if i in (1, 3) else "+y"}})
+    S.component("busbar_main", "power", "busbar", part="busbar_main", label="48 V main busbar 40 x 10 mm", cols={"power": 1})
+    S.bus("busbar_main", "power", axis=2, bar_mm=[40, 10])
+    z_bank = {1: 50, 2: 50, 3: 235, 4: 235}
+    for i in (1, 2, 3, 4):
+        S.port("busbar_main", f"bank_{i}", {"part": "busbar_main", "at": "-z", "offset": [20, 0, z_bank[i]]})
+        S.link(f"contact_bank_{i}", "power", f"battery_bank_{i}.BUS", f"busbar_main.bank_{i}", kind="contact", contact=True)
+    for i, dz in ((1, 500), (2, 580)):
+        S.port("busbar_main", f"reg_{i}", {"part": "busbar_main", "at": "-z", "offset": [20, 0, dz], "dir": [1, 0, 0]})
+        S.link(f"cable_regulator_{i}", "power", f"solar_regulator_{i}.OUT", f"busbar_main.reg_{i}", auto=True, awg="4/0", color="red", assembly="HV_Power_Schematic",
+               bundle="Solar regulator feeds")
+    for k in trays:
+        feeder = _copy("busbar_feeder", "busbar_feeder_run", k)
+        tray = _copy("server_tray", "server_tray_stack", k)
+        S.component(f"tray_{k}", ("power", "optical", "fluid"), "server tray", part=tray, label=f"Server tray {k}", cols={"power": 2, "optical": 4, "fluid": 4}, load_w=TRAY_LOAD_W,
+                    ports={"P48": {"part": feeder, "at": "-x"}})
+        S.port("busbar_main", f"t{k}", {"part": feeder, "at": "+x"})
+        S.link(f"feeder_{k}", "power", f"busbar_main.t{k}", f"tray_{k}.P48", part=feeder, kind="bar", bar_mm=[40, 10])
+    loads = [("pump_A1", 150, "14", "pump"), ("pump_A2", 0, "14", "pump"), ("pump_B1", 150, "14", "pump"), ("pump_B2", 0, "14", "pump"),
+             ("edfa_1", 30, "18", "edfa"), ("edfa_2", 30, "18", "edfa"), ("edfa_3", 30, "18", "edfa"), ("edfa_4", 30, "18", "edfa"),
+             ("optical_switch_top", 200, "14", "switch"), ("optical_switch_bottom", 200, "14", "switch"), ("flight_computer", 60, "16", "computer")]
+    tap_from_bottom = {"pump_A1": 680, "pump_A2": 740, "pump_B1": 800, "pump_B2": 860, "edfa_3": 920, "edfa_4": 980, "optical_switch_bottom": 1040}    # taps 60 mm apart, near the floor kit
+    tap_from_top = {"edfa_1": 30, "edfa_2": 90, "optical_switch_top": 150, "flight_computer": 210}                                                           # and near the ceiling
+    for j, (name, watts, awg, kind) in enumerate(loads):
+        label = {"pump": "Pump " + name[-2:], "edfa": "EDFA " + name[-1], "switch": "Core switch " + name.split("_")[-1], "computer": "Flight computer"}[kind]
+        existing = S.components.get(name)
+        if existing is None:
+            S.component(name, "power", kind, part=name, label=label, cols={"power": 2}, load_w=watts)
+        else:
+            existing["load_w"] = watts
+        S.port(name, "V", {"at": "+z" if kind == "pump" else "+x", **({"part": "flight_shield"} if kind == "computer" else {})})     # the computer's supply enters through its shield
+        # each cable leaves the bar a little farther out than the cable above (or below) it, so their first legs nest instead of crossing
+        if name in tap_from_bottom:
+            rank = sorted(tap_from_bottom.values()).index(tap_from_bottom[name])
+            tap = {"part": "busbar_main", "at": "-z", "offset": [20, 0, tap_from_bottom[name]], "dir": [1, 0, 0], "lead": 40 + 45 * (len(tap_from_bottom) - 1 - rank)}
+        else:
+            rank = sorted(tap_from_top.values()).index(tap_from_top[name])
+            tap = {"part": "busbar_main", "at": "+z", "offset": [20, 0, -tap_from_top[name]], "dir": [1, 0, 0], "lead": 40 + 45 * rank}
+        S.port("busbar_main", f"tap_{name}", tap)
+        S.link(f"cable_{name}", "power", f"busbar_main.tap_{name}", f"{name}.V", auto=True, awg=awg, color="orange", assembly="HV_Power_Schematic",
+               bundle="Power to pumps" if kind == "pump" else "Power to optical rack")
+    # ---- optical -------------------------------------------------------------------------------------------------------------
+    for i, tag in enumerate(("fwd_a", "fwd_b", "aft_a", "aft_b"), start=1):
+        fwd = "fwd" in tag
+        S.component(f"turret_{tag}", "optical", "OISL turret", part=f"turret_{tag}_base", label=f"OISL turret {tag.replace('_', ' ')}", cols={"optical": 0},
+                    ports={"FIBRE": {"part": f"fibre_turret_{i}", "at": "+z" if fwd else "-z"}})
+        S.component(f"edfa_{i}", "optical", "edfa", part=f"edfa_{i}", merge=True, cols={"optical": 1},
+                    ports={"TO_TURRET": {"part": f"fibre_turret_{i}", "at": "-z" if fwd else "+z"}, "TO_SWITCH": {"part": f"fibre_edfa_switch_{i}", "at": "+y" if i in (1, 3) else "-y"}})
+        S.link(f"fibre_turret_{i}", "optical", f"edfa_{i}.TO_TURRET", f"turret_{tag}.FIBRE", part=f"fibre_turret_{i}", fibre="SMF-28", conduit_od_mm=12)
+    for name, edfas in (("optical_switch_top", (1, 2)), ("optical_switch_bottom", (3, 4))):
+        S.component(name, "optical", "core switch", part=name, merge=True, cols={"optical": 2}, ports={"TRUNK": {"part": "fibre_trunk", "at": "+z" if name.endswith("top") else "-z"}})
+        for e in edfas:
+            S.port(name, f"E{e}", {"part": f"fibre_edfa_switch_{e}", "at": "-y" if e in (1, 3) else "+y"})
+            S.link(f"fibre_edfa_switch_{e}", "optical", f"edfa_{e}.TO_SWITCH", f"{name}.E{e}", part=f"fibre_edfa_switch_{e}", fibre="SMF-28", conduit_od_mm=12)
+    S.component("flight_computer", "optical", "computer", part="flight_computer", merge=True, cols={"optical": 4})
+    S.component("optical_trunk", "optical", "fibre trunk", part="fibre_trunk", label="Optical backbone 12 mm", cols={"optical": 3})
+    S.bus("optical_trunk", "optical", axis=2, fibre="SMF-28", conduit_od_mm=12)
+    S.port("optical_trunk", "top", {"part": "fibre_trunk", "at": "+z"})
+    S.port("optical_trunk", "bottom", {"part": "fibre_trunk", "at": "-z"})
+    S.link("trunk_to_switch_top", "optical", "optical_switch_top.TRUNK", "optical_trunk.top", contact=True, fibre="SMF-28", length_mm=0)
+    S.link("trunk_to_switch_bottom", "optical", "optical_switch_bottom.TRUNK", "optical_trunk.bottom", contact=True, fibre="SMF-28", length_mm=0)
+    S.port("optical_trunk", "fc", {"part": "fibre_computer_link", "at": "-y"})
+    S.port("flight_computer", "OPT", {"part": "fibre_computer_link", "at": "+y"})
+    S.link("fibre_computer_link", "optical", "optical_trunk.fc", "flight_computer.OPT", part="fibre_computer_link", fibre="SMF-28", conduit_od_mm=12)
+    for k in trays:
+        branch = _copy("fibre_branch", "fibre_branch_run", k)
+        S.port("optical_trunk", f"t{k}", {"part": branch, "at": "-x"})
+        S.port(f"tray_{k}", "OPT", {"part": branch, "at": "+x"})
+        S.link(f"fibre_branch_{k}", "optical", f"optical_trunk.t{k}", f"tray_{k}.OPT", part=branch, fibre="SMF-28", conduit_od_mm=12)
+    # ---- coolant -------------------------------------------------------------------------------------------------------------
+    for tag, s in (("A", 1), ("B", -1)):
+        tray_end, man_end = ("-y", "+y") if s > 0 else ("+y", "-y")
+        inner, outer = ("-y", "+y") if s > 0 else ("+y", "-y")                  # faces of the skid equipment toward the trays / toward the hull wall
+        wing, wing_end, near_end = ("pos_y", "+y", "-y") if s > 0 else ("neg_y", "-y", "+y")
+        asm = "MPFL_Fluid_Schematic"
+        S.component(f"cold_manifold_{tag}", "fluid", "manifold", part=f"cold_manifold_{tag}", label=f"Cold manifold {tag}", cols={"fluid": 3}, od_mm=60, wall_mm=3, color="blue", loop=tag,
+                    ports={"in1": {"at": "-z"}, "in2": {"at": "+z"}})
+        S.component(f"hot_manifold_{tag}", "fluid", "manifold", part=f"hot_manifold_{tag}", label=f"Hot manifold {tag}", cols={"fluid": 5}, od_mm=60, wall_mm=3, color="red", loop=tag,
+                    ports={"out": {"part": f"hot_line_{tag}", "at": near_end}})
+        S.component(f"accumulator_{tag}", "fluid", "accumulator", part=f"accumulator_{tag}", label=f"Accumulator {tag}", cols={"fluid": 1}, loop=tag,
+                    ports={"in": {"at": "+z"}, "out1": {"at": inner, "offset": [0, 0, -85]}, "out2": {"at": "+x", "offset": [0, 0, -85]}})
+        for n in (1, 2):
+            S.component(f"pump_{tag}{n}", "fluid", "pump", part=f"pump_{tag}{n}", merge=True, cols={"fluid": 2}, loop=tag, label=f"Pump {tag}{n}" + (" (duty)" if n == 1 else " (standby)"),
+                        ports={"in": {"at": inner}, "out": {"at": outer}})
+        S.component(f"wing_{tag}", "fluid", "radiator wing", label="Radiator wing " + ("+Y" if s > 0 else "-Y"), cols={"fluid": 6}, loop=tag,
+                    ports={"hot_in": {"part": f"hot_line_{tag}", "at": wing_end}, "cold_out": {"part": f"cold_line_{tag}", "at": wing_end}}, area_m2=RADIATOR_AREA_M2)
+        S.component(f"elbow_{tag}", "fluid", "fitting", label=f"Return fitting {tag}", cols={"fluid": 0}, loop=tag, ports={"in": {"part": f"cold_line_{tag}", "at": near_end},
+                                                                                                                          "out": {"part": f"cold_line_{tag}", "at": near_end}})
+        for k in trays:
+            ch, hf = _copy(f"cold_feeder_{tag}", f"cold_feeder_{tag}_run", k), _copy(f"hot_feeder_{tag}", f"hot_feeder_{tag}_run", k)
+            S.port(f"tray_{k}", f"{tag}_cold", {"part": ch, "at": tray_end})
+            S.port(f"tray_{k}", f"{tag}_hot", {"part": hf, "at": tray_end})
+            S.port(f"cold_manifold_{tag}", f"tap{k}", {"part": ch, "at": man_end})
+            S.port(f"hot_manifold_{tag}", f"tap{k}", {"part": hf, "at": man_end})
+            S.link(f"cold_feeder_{tag}_{k}", "fluid", f"cold_manifold_{tag}.tap{k}", f"tray_{k}.{tag}_cold", part=ch, od_mm=20, wall_mm=1.5, role="cold", loop=tag)
+            S.link(f"hot_feeder_{tag}_{k}", "fluid", f"tray_{k}.{tag}_hot", f"hot_manifold_{tag}.tap{k}", part=hf, od_mm=20, wall_mm=1.5, role="hot", loop=tag)
+        S.link(f"hot_line_{tag}", "fluid", f"hot_manifold_{tag}.out", f"wing_{tag}.hot_in", part=f"hot_line_{tag}", od_mm=60, wall_mm=2, role="hot", loop=tag)
+        S.link(f"cold_line_{tag}", "fluid", f"wing_{tag}.cold_out", f"elbow_{tag}.in", part=f"cold_line_{tag}", od_mm=60, wall_mm=2, role="cold", loop=tag)
+        pipe = dict(od_mm=40, wall_mm=2, auto=True, assembly=asm, loop=tag)
+        S.link(f"return_{tag}", "fluid", f"elbow_{tag}.out", f"accumulator_{tag}.in", role="cold", **pipe)
+        for n, port in ((1, "out1"), (2, "out2")):
+            S.link(f"suction_{tag}{n}", "fluid", f"accumulator_{tag}.{port}", f"pump_{tag}{n}.in", role="cold", **pipe)
+        S.link(f"discharge_{tag}1", "fluid", f"pump_{tag}1.out", f"cold_manifold_{tag}.in1", role="cold", **pipe)
+        S.link(f"discharge_{tag}2", "fluid", f"pump_{tag}2.out", f"cold_manifold_{tag}.in2", role="cold", **pipe)
+        bore = dict(od_mm=36, wall_mm=2)
+        hot_tubes = [_copy(f"tube_hot_{wing}", f"tube_hot_{wing}_row", k) for k in range(1, 7)]
+        cold_tubes = [_copy(f"tube_cold_{wing}", f"tube_cold_{wing}_row", k) for k in range(1, 7)]
+        S.loop(f"Loop {tag}", fluid="ammonia", heat_w=TRAYS * TRAY_LOAD_W, delta_t_k=10.0, pump={"component": f"pump_{tag}1", "head_kpa": 250.0},
+               radiator={"area_m2": RADIATOR_AREA_M2, "emissivity": 0.85, "fluid_temp_k": 293.0, "sink_temp_k": 200.0, "fin_drop_k": 5.0},
+               stages=[dict(name="Pump discharge", elements=[f"discharge_{tag}1"]),
+                       dict(name="Cold manifold", elements=[f"cold_manifold_{tag}"]),
+                       dict(name="Cold feeders (16 in parallel)", elements=[f"cold_feeder_{tag}_{k}" for k in trays], parallel=True),
+                       dict(name="Tray cold plates", elements=[dict(id=f"cold_plates_{tag}", od_mm=17, wall_mm=0, length_mm=0, dp_kpa=20.0, parts=[f"tray_{k}" for k in trays])]),
+                       dict(name="Hot feeders (16 in parallel)", elements=[f"hot_feeder_{tag}_{k}" for k in trays], parallel=True),
+                       dict(name="Hot manifold", elements=[f"hot_manifold_{tag}"]),
+                       dict(name="Hot line to radiator", elements=[f"hot_line_{tag}"]),
+                       dict(name="Root header (hot)", elements=[dict(id=f"root_hot_{tag}", part=f"root_header_hot_{wing}", od_mm=60, wall_mm=2)]),
+                       dict(name="Hot radiator tubes (6 in parallel)", elements=[dict(id=f"tubes_hot_{tag}", parts=hot_tubes, **bore)]),
+                       dict(name="Tip header", elements=[dict(id=f"tip_{tag}", part=f"tip_header_{wing}", od_mm=60, wall_mm=2)]),
+                       dict(name="Cold radiator tubes (6 in parallel)", elements=[dict(id=f"tubes_cold_{tag}", parts=cold_tubes, **bore)]),
+                       dict(name="Root header (cold)", elements=[dict(id=f"root_cold_{tag}", part=f"root_header_cold_{wing}", od_mm=60, wall_mm=2)]),
+                       dict(name="Cold line", elements=[f"cold_line_{tag}"]),
+                       dict(name="Return to accumulator", elements=[f"return_{tag}"]),
+                       dict(name="Pump suction", elements=[f"suction_{tag}1"])])
+    # ---- optical loss budgets ---------------------------------------------------------------------------------------------------
+    S.sync(d)
+    for k in trays:
+        S.chain(f"Core switch (top) to tray {k}", links=_trunk_path(S, k) + [f"fibre_branch_{k}"], connectors=4, budget_db=6.0)
+    for i in (1, 2, 3, 4):
+        sw = "optical_switch_top" if i in (1, 2) else "optical_switch_bottom"
+        far = 16 if i in (1, 2) else 1
+        S.chain(f"Turret {i} to tray {far} (longest path)", links=[f"fibre_turret_{i}", f"fibre_edfa_switch_{i}"] + _trunk_path(S, far, top=(i in (1, 2))) + [f"fibre_branch_{far}"],
+                connectors=7, budget_db=10.0)
+    return S
+
+
+def _trunk_path(S, k: int, top: bool = True) -> list[str]:
+    """The trunk segments between the top (or bottom) switch and the tap of tray k."""
+    segs = sorted((l for l in S.links.values() if l.get("generated") == "optical_trunk"), key=lambda l: min(l["span"][0][2], l["span"][1][2]))
+    tap = S.port_pos(f"optical_trunk.t{k}")[2]
+    out = []
+    for l in segs:
+        lo, hi = sorted((l["span"][0][2], l["span"][1][2]))
+        if top and lo >= tap - 1e-6:
+            out.append(l["id"])
+        if not top and hi <= tap + 1e-6:
+            out.append(l["id"])
+    return out
 
 
 # ==========================================================================================================
 #  The whole satellite
 # ==========================================================================================================
-def build(overrides: dict | None = None, name: str = "Heavy_Orbital_Node") -> Design:
+def build(overrides: dict | None = None, name: str = "Heavy_Orbital_Node", with_systems: bool = True) -> Design:
     p = {**PARAMETERS, **(overrides or {})}
     unknown = set(p) - set(PARAMETERS)
     if unknown:
@@ -303,13 +484,16 @@ def build(overrides: dict | None = None, name: str = "Heavy_Orbital_Node") -> De
         d.set_variable("tray_z0", "=-7.5 * TRAY_PITCH_MM")
         d.set_variable("stack_half", "=7.5 * TRAY_PITCH_MM + 32.5")
         d.set_variable("bus_bottom", -2500)
-        d.set_variable("bus_top", "=stack_half + 60")
+        d.set_variable("bus_top", "=stack_half + 360")
         d.set_variable("manifold_z0", "=-stack_half - 150")
         d.set_variable("manifold_len", "=2 * stack_half + 300")
         d.set_variable("fin_base_half", f"=min({FIN_TOP / 2} + {FIN_HEIGHT} * tan(FIN_RIDGE_ANGLE_DEG / 2), {FIN_PITCH / 2 - 1})")
         b = B(d)
         for step in (primary_bus, compute_core, hv_power, optical, fluid, radiators, turrets):
             step(b)
+    if with_systems:                                          # the netlist, the automatic cable and pipe routes, and their 3D tubes
+        from satcad import routing
+        routing.update(d, netlist(d))
     return d
 
 
@@ -353,14 +537,19 @@ def main(argv=None) -> int:
     ap.add_argument("--set", action="append", metavar="NAME=VALUE", help="override BUS_WIDTH_MM, TRAY_PITCH_MM or FIN_RIDGE_ANGLE_DEG")
     ap.add_argument("--name", default="heavy_orbital_node", help="file name (without extension) for the saved design")
     ap.add_argument("--no-save", action="store_true", help="do not write files")
+    ap.add_argument("--no-systems", action="store_true", help="geometry only: skip the wiring / tubing / fibre netlist and its routes")
+    ap.add_argument("--diagrams", action="store_true", help="also write the wiring, cooling and optical diagrams, the 3D routing view and the cut lists")
     args = ap.parse_args(argv)
     t0 = time.time()
     try:
-        d = build(_parse(args.set))
+        d = build(_parse(args.set), with_systems=not args.no_systems)
     except DesignError as e:
         print(f"Can't build this design: {e}", file=sys.stderr)
         return 1
     print(report(d))
+    if d.systems:
+        from satcad.systems import Systems
+        print(Systems.of(d).report(d))
     print(f"(built in {time.time() - t0:.1f} s)")
     if not args.no_save:
         js = in_designs(f"{args.name}.json")
@@ -369,6 +558,11 @@ def main(argv=None) -> int:
         info = d.export(js.parent, args.name, ["step"])
         print("Saved", js)
         print("Exported", info["step"]["path"])
+        if args.diagrams and d.systems:
+            from satcad import diagrams
+            from satcad.systems import Systems
+            paths = diagrams.write_all(Systems.of(d), d, js.parent / f"{args.name}_systems", include_check=False)
+            print(f"Wrote {len(paths)} drawings and cut lists to", js.parent / f"{args.name}_systems")
     return 0
 
 

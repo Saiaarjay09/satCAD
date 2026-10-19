@@ -65,7 +65,9 @@ The line at the very bottom tells you what to do next ("Edit values in the Prope
 
 ![Motion tab](howto/02_ribbon_motion.png)
 
-**View**: standard views, zoom to fit, shaded / wireframe.
+**Systems**: wiring, cooling and optical diagrams, 3D routing view, checks, one-click update, cut lists, and layer toggles (see [section 6c](#6c-wiring-cooling-and-optical-systems-the-internals-as-diagrams)).
+
+**View**: standard views, zoom to fit, shaded / wireframe, X-Ray.
 
 ![View tab](howto/02_ribbon_view.png)
 
@@ -233,6 +235,56 @@ Numbers outside the range are refused with the reason rather than producing a br
 **What it does not do, honestly.** The 35 mm bus wall is modelled as a plain solid wall, not an isogrid pattern. The corridor beside the trays is 650 mm measured from the *outer* skin
 (615 mm of clear space inside along X, 815 mm along Y). The "30 mm" manifolds are modelled as radius 30. The pipes, pumps and electronics are schematic shapes for layout and clash checking:
 they are not flight hardware and there is no flow, thermal or electrical analysis behind them.
+
+---
+
+### 6c. Wiring, cooling and optical systems: the internals as diagrams
+
+A satellite's insides are cables, coolant tubes and fibres. satCAD stores a **netlist** in the design file: which component connects to which, what each connection is made of, and where it
+runs in 3D. The heavy orbital node (section 6b) carries one. Open it, then use the **Systems** tab.
+
+![The Systems tab with only the cooling layer shown](howto/24_systems_cooling_layer.png)
+
+**See one network at a time in 3D.** The **Show** group (Power, Optical, Cooling, Shell) hides or shows everything on that layer: the picture above is the cooling layer alone, two redundant
+coolant loops with their pump skids (the cylinders), 16 cold-plate feeder pairs each, and the tubes to the radiator wings. Below is the 48 V power layer: the busbar with a feeder to every tray,
+and the cables to the regulators, pumps and optical equipment. **Show All** (View tab) brings everything back.
+
+![Only the power layer](howto/25_systems_power_layer.png)
+
+**The drawings** open in your browser (no internet needed) from the **Drawings** group:
+
+| Button | You get |
+|---|---|
+| **Wiring** | the 48 V connection diagram: batteries and regulators on the left, the busbar with every tap, each cable or bar with its gauge, current and length, loads on the right with their voltage drop. Boxes are arranged in physical order (up is +Z) |
+| **Cooling** | one sheet per loop: pump A1 (duty) and A2 (standby), accumulator, cold manifold, 16 cold plates, hot manifold, radiator wing; arrows show flow, each tube shows its speed and pressure drop; a table lists the loop's pressure budget |
+| **Optical** | turrets, EDFAs, the two core switches, the backbone with a tap for every tray, loss and latency per run and per path |
+| **3D Routing** | every run in 3D: drag to rotate, wheel to zoom, tick layers, hover a run for its numbers, click to pin it |
+
+![The cooling diagram of loop A](howto/27_cooling_diagram.png)
+
+![The 3D routing view in a browser](howto/29_routing_view.jpg)
+
+![The 48 V wiring diagram](howto/26_wiring_diagram.png)
+
+![The optical data diagram](howto/28_optical_diagram.png)
+
+**Check** runs the engineering rules and prints the result in the Information window: current density in every wire and bar, voltage drop to every load, whether the regulators and batteries can carry the load,
+flow speed in every tube, the pressure drop against the pump head, whether the radiator can reject the heat, fibre bend radius and loss budget, the gap between electrical and coolant runs, and
+**exact-geometry clashes** (every cable and tube is a real solid in the model, so the same interference check that finds overlapping parts finds a cable through a wall). A line such as
+`[WARN P1] cable_optical_switch_top (AWG 14) is at 80% of the current-density limit` tells you what to change (use a heavier gauge).
+
+**Change the model, then press Update.** Try it: set `TRAY_PITCH MM` to 200 in the Property Editor and press **Check**: it reports that the busbar taps moved and that some cables no longer reach their ports.
+Press **Update**: the ports are re-read from the new geometry, the automatic runs are re-routed around the equipment, and the tubes are redrawn (about eight seconds). Check again: no errors. Update is one
+undo step (Ctrl+Z).
+
+**Schedules** writes every drawing and the CSV cut lists (wire list with cut lengths, tube list with bores and pressure drops, fibre list) into the designs folder.
+
+**What the numbers mean.** They are concept-level: textbook formulas (Ohm's law, Darcy-Weisbach friction, Stefan-Boltzmann radiation, fibre attenuation) with assumed loads (1.2 kW per server tray), 250 kPa pumps,
+ammonia at 20 degC and a 200 K radiator sink. The assumptions are written into the file and listed under each drawing. This is not a flight-qualified harness analysis; see
+[docs/CAPITAL_BENCHMARK.md](CAPITAL_BENCHMARK.md) for an honest comparison with Siemens Capital and what is still missing (pin-outs, formboards, variants, a parts library).
+
+**Make your own.** In Python (`satcad/systems.py`, with the worked example in `generate_heavy_orbital_node.py`, function `netlist`): add components with ports anchored to parts of the model, link them with cables,
+tubes or fibres (`auto=True` lets the router find the path), describe the coolant loop, and `save_to(design)`.
 
 ---
 

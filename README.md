@@ -267,7 +267,7 @@ nothing is selected: `NUM_SERVER_BLADES` (1 to 18), `RADIATOR_SPAN_MM`, `SOLAR_S
 
 `generate_heavy_orbital_node.py` is a second, larger example (a standalone script; the app does not include it either): a 3.5 x 3.5 x 5.5 m hollow bus with **16 server trays** (2200 x 1800 x 65 mm,
 220 mm pitch), three colour-coded schematic systems (`HV_Power_Schematic` orange, `Optical_Data_Schematic` cyan, `MPFL_Fluid_Schematic` red / blue) routed through the corridors beside the trays,
-four laser turrets, and two 16 m radiator wings with trapezoidal ridges and rifled micro-ridge tubes: **320 bodies, about 19 t, no overlaps, rebuilt in about 0.2 s**. **Open**
+four laser turrets, and two 16 m radiator wings with trapezoidal ridges and rifled micro-ridge tubes: **320 bodies in the geometry (343 with the routed cables and pipes), about 19 t, no overlaps, geometry rebuilt in about 0.2 s**. **Open**
 `sattelite designs/heavy_orbital_node.json`, then use **View -> X-Ray** to make the hull, racks and radiator skins 85% transparent while the power, optical and fluid loops stay solid.
 Parts get an X-Ray group from their `layer` setting; each Part Navigator assembly row has a tick box that hides or shows all its parts. `BUS WIDTH MM`, `TRAY PITCH MM` and
 `FIN RIDGE ANGLE DEG` appear in the Property Editor and rebuild the model when changed. See [section 6b of the guide](docs/HOW_TO_USE.md#6b-the-heavy-orbital-node-and-x-ray).
@@ -278,6 +278,50 @@ python generate_heavy_orbital_node.py --set TRAY_PITCH_MM=200 --name my_node
 
 Honest limits: the 35 mm wall is a plain solid wall (no isogrid pattern), the 650 mm corridor is measured from the outer skin (615 mm clear inside along X), and the pipes, pumps and
 electronics are schematic shapes for layout and clash checking, not analysed or flight hardware.
+
+## Wiring, cooling and optical systems (and the 3D internals)
+
+A satellite's guts are not just boxes: they are cables, coolant tubes and fibres. satCAD keeps a **netlist** inside the design file (what connects to what, and what each run is
+made of), tied to parts of the 3D model. From it satCAD routes the runs, draws them as real tubes in the model, checks them, and draws the diagrams.
+
+![Wiring, cooling and optical diagrams drawn from the model](docs/howto/27_cooling_diagram.png)
+
+| You get | How |
+|---|---|
+| **Wiring diagram** of the 48 V network: sources, busbar with every tap, every cable and bar with gauge, current and voltage drop | **Systems -> Wiring** |
+| **Cooling diagram** of each coolant loop: pumps, accumulator, manifolds, 16 cold plates, radiator, flow arrows, speed and pressure drop on every tube, pump and radiator budget | **Systems -> Cooling** |
+| **Optical diagram**: turrets, EDFAs, core switches, the fibre backbone, loss and latency per run and per path | **Systems -> Optical** |
+| **3D routing view**: every cable, tube and fibre in 3D in your browser (drag to rotate, wheel to zoom, hover a run for its numbers, no internet needed) | **Systems -> 3D Routing** |
+| **Rule checks**: current density, voltage drop, source capacity, flow speed, pump head, radiator capacity, fibre bend radius and loss budget, clearance between electrical and coolant runs, exact-geometry clashes, routes made stale by a design change | **Systems -> Check** |
+| **One-click update** after you change the model: ports follow their parts, automatic runs re-route, tubes redraw | **Systems -> Update** |
+| **Cut lists** (wires, tubes, fibres) as CSV, plus all the drawings, in the designs folder | **Systems -> Schedules** |
+| **One network at a time in 3D**: Power / Optical / Cooling / Shell toggles (and View -> X-Ray) | **Systems -> Show** |
+
+Open `sattelite designs/heavy_orbital_node.json` to try it (the app does not include it; it is an ordinary design file). It carries a 48 V busbar with taps and cables, the optical
+backbone, and two redundant ammonia loops with pump skids: **188 runs, 343 bodies, 0 clashes, 0 rule errors**. The pre-made drawings are in
+[`sattelite designs/heavy_orbital_node_systems`](sattelite%20designs/heavy_orbital_node_systems/) (open the `.html` files in a browser). From code:
+
+```bash
+python generate_heavy_orbital_node.py --diagrams          # build, check, save, and write the drawings
+```
+
+```python
+from satcad import Design, diagrams, routing
+from satcad.systems import Systems
+d = Design("x"); d.load("sattelite designs/heavy_orbital_node.json")
+S = Systems.of(d)
+print(S.report(d))                          # numbers and findings
+diagrams.write_all(S, d, "drawings")        # wiring / cooling / optical / 3D view / CSV cut lists
+d.set_variable("TRAY_PITCH_MM", 200)        # change the model...
+routing.update(d, S)                        # ...and re-route everything in one call
+```
+
+**How to build your own:** `Systems().component(...)` adds a box (a pump, a battery) with named ports anchored to model parts, `.link(...)` adds a cable, tube or fibre between two ports
+(`auto=True` lets the router find the path), `.loop(...)` describes a coolant loop, and `.save_to(design)` stores it in the file. `generate_heavy_orbital_node.py` (function `netlist`) is a full example.
+
+**Honest limits.** The loads, pump heads, fluid properties and current-density screen are assumptions for concept studies, written in the file and editable; this is not a
+MIL-W-5088 / ECSS harness analysis, not flight-qualified, and it has no connector pin-outs, formboards, variants or parts library yet. How it compares with Siemens Capital, point by
+point and without hype, is in [docs/CAPITAL_BENCHMARK.md](docs/CAPITAL_BENCHMARK.md).
 
 ## How to use satCAD
 
@@ -362,7 +406,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`421 passed` and the path of the connector.
+`462 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -702,7 +746,7 @@ Open-source-CAD-software/
 ├── requirements-gui.txt      the extra libraries for the desktop application (PySide6, vtk)
 ├── sattelite designs/          ALL saved satellite designs: STEP files and .json recipes (see its README)
 ├── generate_orbital_node_assembly.py   builds the detailed Orbital-Node-Alpha satellite (6 sub-assemblies, 405 bodies, STEP export)
-├── generate_heavy_orbital_node.py   builds the heavy orbital node (16 trays, power / optical / fluid schematics, 16 m radiator wings; 320 bodies, STEP export)
+├── generate_heavy_orbital_node.py   builds the heavy orbital node (16 trays, power / optical / fluid schematics, 16 m radiator wings, full wiring / cooling / optical netlist; 343 bodies, STEP export)
 ├── studio_app.py             entry point of the SatCAD Studio app
 ├── studio.spec / studio.iss  recipes that package Studio (PyInstaller) and make the Windows installer (Inno Setup)
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
@@ -717,6 +761,9 @@ Open-source-CAD-software/
 │   │                         types, mass properties and inertia, BOM, overlap checks, export, save/load).
 │   │                         No Claude code in here.
 │   ├── expressions.py        the safe formula interpreter behind variables and "=formulas"
+│   ├── systems.py            wiring / tubing / fibre netlists: engineering maths (Ohm, Darcy-Weisbach, radiator, fibre loss) and the rule checks
+│   ├── routing.py            the right-angled cable / tube router and the conversion of routes into swept 3D tubes
+│   ├── diagrams.py           the wiring, cooling and optical diagrams, the 3D routing view and the CSV cut lists
 │   ├── viewer.py             writes the interactive 3D viewer (assembly tree, hinge sliders) and the animated mode-shape viewer
 │   ├── gui/                  THE DESKTOP APPLICATION (PySide6 + VTK)
 │   │   ├── main.py           entry point and demo part
@@ -951,7 +998,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-421 tests. They include:
+462 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
@@ -960,6 +1007,7 @@ python -m pytest -q
 - Assemblies and hinges, ISO hole and screw dimensions, thread engagement, shell / sweep / loft validation, and the stow-and-deploy poses.
 - Volumes of extrudes, tubes, revolves, fillets, holes and pockets; pattern and mirror positions.
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
+- Systems: the wiring / cooling / optical maths against hand calculations, the router (right angles, bend legs, clearances), stale-route detection and one-click update, the three diagrams (valid SVG, escaped text), the 3D routing view data and the Systems tab.
 - The heavy orbital node (bodies, 16 trays at the right pitch, ridge and rifled-tube geometry, the three parameters, the CLI), X-Ray, layers and Part Navigator folder toggles.
 - Panel placement and tilt on all six faces, parametric rebuilds, error messages, save/load (including older files),
   STEP round-tripping, the Stefan-Boltzmann and solar maths, picture and viewer output (including a script-injection test),

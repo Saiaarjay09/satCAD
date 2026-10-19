@@ -22,6 +22,7 @@ from PySide6.QtCore import QPoint, QRect, Qt  # noqa: E402
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap  # noqa: E402
 from PySide6.QtWidgets import QApplication, QDialog, QWidget  # noqa: E402
 
+from satcad import Design  # noqa: E402
 from satcad.gui import commands, theme  # noqa: E402
 from satcad.gui.session import Session  # noqa: E402
 from satcad.gui.ui_layout import MainWindow  # noqa: E402
@@ -124,6 +125,59 @@ def heavy_section() -> None:
     settle()
     grab_window(win, "22_heavy_xray.png", [(rect_of(win, win.xray_button), "View > X-Ray", "tr"), (rect_of(win, win.viewport), "hull and racks 85% see-through; power, optical and fluid loops stay solid")])
     win.close()
+
+
+def systems_section() -> None:
+    """Section 6c: wiring, cooling and optical systems. `python tools/make_howto_images.py --systems` redraws only these."""
+    import re
+
+    from PySide6.QtCore import QByteArray
+    from PySide6.QtGui import QColor as _QColor
+    from PySide6.QtGui import QImage, QPainter as _QPainter
+    from PySide6.QtSvg import QSvgRenderer
+
+    from satcad import diagrams
+    from satcad.systems import Systems
+
+    win, s = new_window((1600, 960))
+    s.open(ROOT / "sattelite designs" / "heavy_orbital_node.json")
+    win.viewport.set_view("iso")
+    win.navigator._items["Radiator_Wings"].setCheckState(0, Qt.Unchecked)
+    win.ribbon.setCurrentIndex([win.ribbon.tabText(i) for i in range(win.ribbon.count())].index("Systems"))
+    s.select(None)
+    for key in ("shell", "power", "optical"):                     # cooling only: both coolant loops with their pump skids and the 16 cold plates
+        win.set_layer_visible(key, False)
+    win.viewport.fit()
+    win.viewport.zoom_by(1.3)
+    settle()
+    grab_window(win, "24_systems_cooling_layer.png", [(rect_of(win, win.ribbon), "Systems tab: drawings, checks, layers", "tr"), (rect_of(win, win.viewport), "only the cooling layer is shown")])
+    for key in ("shell", "power", "optical", "fluid"):
+        win.set_layer_visible(key, key == "power")
+    win.viewport.fit()
+    win.viewport.zoom_by(1.3)
+    settle()
+    grab_window(win, "25_systems_power_layer.png", [(rect_of(win, win.viewport), "only the 48 V power layer: busbar, taps, cables")])
+    win.show_all_parts()
+    win.close()
+    # the drawings, as pictures
+    d = Design("x")
+    d.load(ROOT / "sattelite designs" / "heavy_orbital_node.json")
+    S = Systems.of(d)
+    S.sync(d)
+    res = S.analyse(d)
+    pages = {"26_wiring_diagram.png": diagrams.wiring_diagram(S, d, res), "27_cooling_diagram.png": diagrams.cooling_diagram(S, d, res), "28_optical_diagram.png": diagrams.optical_diagram(S, d, res)}
+    for name, page in pages.items():
+        svg = re.findall(r"<svg.*?</svg>", page, re.S)[0]
+        r = QSvgRenderer(QByteArray(svg.encode()))
+        size = r.defaultSize()
+        scale = min(1.0, 2000 / size.width(), 2600 / size.height())
+        img = QImage(int(size.width() * scale), int(size.height() * scale), QImage.Format_ARGB32)
+        img.fill(_QColor("white"))
+        painter = _QPainter(img)
+        r.render(painter)
+        painter.end()
+        img.save(str(OUT / name))
+        print("wrote", name, img.width(), "x", img.height())
 
 
 def main() -> None:
@@ -270,11 +324,14 @@ def main() -> None:
     save(win.motion_dock.equations.grab(), "20_custom_equation_sliders.png")
     win.close()
     heavy_section()
+    systems_section()
     print("done")
 
 
 if __name__ == "__main__":
     if "--heavy" in sys.argv:
         heavy_section()
+    elif "--systems" in sys.argv:
+        systems_section()
     else:
         main()

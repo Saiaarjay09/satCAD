@@ -1,0 +1,66 @@
+id,from,to,type,colour,length_m,cut_length_m,current_a,drop_v,mass_kg,bundle
+contact_bank_1,battery_bank_1.BUS,busbar_main.bank_1,bolted joint,,0.0,0.0,104.583,0.01046,0.0,
+contact_bank_2,battery_bank_2.BUS,busbar_main.bank_2,bolted joint,,0.0,0.0,104.583,0.01046,0.0,
+contact_bank_3,battery_bank_3.BUS,busbar_main.bank_3,bolted joint,,0.0,0.0,104.583,0.01046,0.0,
+contact_bank_4,battery_bank_4.BUS,busbar_main.bank_4,bolted joint,,0.0,0.0,104.583,0.01046,0.0,
+cable_regulator_1,solar_regulator_1.OUT,busbar_main.reg_1,AWG 4/0,red,1.895,2.0318,209.167,0.12747,2.0918,Solar regulator feeds
+cable_regulator_2,solar_regulator_2.OUT,busbar_main.reg_2,AWG 4/0,red,1.975,2.1143,209.167,0.13285,2.1767,Solar regulator feeds
+feeder_1,busbar_main.t1,tray_1.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_2,busbar_main.t2,tray_2.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_3,busbar_main.t3,tray_3.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_4,busbar_main.t4,tray_4.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_5,busbar_main.t5,tray_5.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_6,busbar_main.t6,tray_6.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_7,busbar_main.t7,tray_7.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_8,busbar_main.t8,tray_8.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_9,busbar_main.t9,tray_9.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_10,busbar_main.t10,tray_10.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_11,busbar_main.t11,tray_11.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_12,busbar_main.t12,tray_12.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_13,busbar_main.t13,tray_13.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_14,busbar_main.t14,tray_14.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_15,busbar_main.t15,tray_15.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+feeder_16,busbar_main.t16,tray_16.P48,bar 40 x 10 mm,,0.18,0.18,25.0,0.00039,0.6451,
+cable_pump_A1,busbar_main.tap_pump_A1,pump_A1.V,AWG 14,orange,2.97,3.1391,3.125,0.15381,0.0761,Power to pumps
+cable_pump_A2,busbar_main.tap_pump_A2,pump_A2.V,AWG 14,orange,2.64,2.7992,0.0,0.0,0.0679,Power to pumps
+cable_pump_B1,busbar_main.tap_pump_B1,pump_B1.V,AWG 14,orange,2.91,3.0773,3.125,0.1507,0.0746,Power to pumps
+cable_pump_B2,busbar_main.tap_pump_B2,pump_B2.V,AWG 14,orange,2.58,2.7374,0.0,0.0,0.0664,Power to pumps
+cable_edfa_1,busbar_main.tap_edfa_1,edfa_1.V,AWG 18,orange,4.2075,4.4137,0.625,0.11018,0.0422,Power to optical rack
+cable_edfa_2,busbar_main.tap_edfa_2,edfa_2.V,AWG 18,orange,4.3575,4.5682,0.625,0.11411,0.0437,Power to optical rack
+cable_edfa_3,busbar_main.tap_edfa_3,edfa_3.V,AWG 18,orange,5.017,5.2475,0.625,0.13138,0.0502,Power to optical rack
+cable_edfa_4,busbar_main.tap_edfa_4,edfa_4.V,AWG 18,orange,4.987,5.2166,0.625,0.1306,0.0499,Power to optical rack
+cable_optical_switch_top,busbar_main.tap_optical_switch_top,optical_switch_top.V,AWG 14,orange,3.1675,3.3425,4.167,0.21872,0.0811,Power to optical rack
+cable_optical_switch_bottom,busbar_main.tap_optical_switch_bottom,optical_switch_bottom.V,AWG 14,orange,3.8136,4.008,4.167,0.26333,0.0972,Power to optical rack
+cable_flight_computer,busbar_main.tap_flight_computer,flight_computer.V,AWG 16,orange,5.6625,5.9124,1.25,0.18644,0.0851,Power to optical rack
+busbar_main/seg1,busbar_main.bank_1,busbar_main.bank_2,bar 40 x 10 mm,,0.0,0.0,104.583,0.0,0.0,
+busbar_main/seg2,busbar_main.bank_2,busbar_main.bank_3,bar 40 x 10 mm,,0.185,0.185,209.167,0.00334,0.663,
+busbar_main/seg3,busbar_main.bank_3,busbar_main.bank_4,bar 40 x 10 mm,,0.0,0.0,313.75,0.0,0.0,
+busbar_main/seg4,busbar_main.bank_4,busbar_main.reg_1,bar 40 x 10 mm,,0.265,0.265,418.333,0.00956,0.9498,
+busbar_main/seg5,busbar_main.reg_1,busbar_main.reg_2,bar 40 x 10 mm,,0.08,0.08,418.333,0.00288,0.2867,
+busbar_main/seg6,busbar_main.reg_2,busbar_main.tap_pump_A1,bar 40 x 10 mm,,0.1,0.1,418.333,0.00361,0.3584,
+busbar_main/seg7,busbar_main.tap_pump_A1,busbar_main.tap_pump_A2,bar 40 x 10 mm,,0.06,0.06,415.208,0.00215,0.215,
+busbar_main/seg8,busbar_main.tap_pump_A2,busbar_main.tap_pump_B1,bar 40 x 10 mm,,0.06,0.06,415.208,0.00215,0.215,
+busbar_main/seg9,busbar_main.tap_pump_B1,busbar_main.t1,bar 40 x 10 mm,,0.05,0.05,412.083,0.00178,0.1792,
+busbar_main/seg10,busbar_main.t1,busbar_main.tap_pump_B2,bar 40 x 10 mm,,0.01,0.01,387.083,0.00033,0.0358,
+busbar_main/seg11,busbar_main.tap_pump_B2,busbar_main.tap_edfa_3,bar 40 x 10 mm,,0.06,0.06,387.083,0.002,0.215,
+busbar_main/seg12,busbar_main.tap_edfa_3,busbar_main.tap_edfa_4,bar 40 x 10 mm,,0.06,0.06,386.458,0.002,0.215,
+busbar_main/seg13,busbar_main.tap_edfa_4,busbar_main.tap_optical_switch_bottom,bar 40 x 10 mm,,0.06,0.06,385.833,0.002,0.215,
+busbar_main/seg14,busbar_main.tap_optical_switch_bottom,busbar_main.t2,bar 40 x 10 mm,,0.03,0.03,381.667,0.00099,0.1075,
+busbar_main/seg15,busbar_main.t2,busbar_main.t3,bar 40 x 10 mm,,0.22,0.22,356.667,0.00676,0.7885,
+busbar_main/seg16,busbar_main.t3,busbar_main.t4,bar 40 x 10 mm,,0.22,0.22,331.667,0.00629,0.7885,
+busbar_main/seg17,busbar_main.t4,busbar_main.t5,bar 40 x 10 mm,,0.22,0.22,306.667,0.00582,0.7885,
+busbar_main/seg18,busbar_main.t5,busbar_main.t6,bar 40 x 10 mm,,0.22,0.22,281.667,0.00534,0.7885,
+busbar_main/seg19,busbar_main.t6,busbar_main.t7,bar 40 x 10 mm,,0.22,0.22,256.667,0.00487,0.7885,
+busbar_main/seg20,busbar_main.t7,busbar_main.t8,bar 40 x 10 mm,,0.22,0.22,231.667,0.00439,0.7885,
+busbar_main/seg21,busbar_main.t8,busbar_main.t9,bar 40 x 10 mm,,0.22,0.22,206.667,0.00392,0.7885,
+busbar_main/seg22,busbar_main.t9,busbar_main.t10,bar 40 x 10 mm,,0.22,0.22,181.667,0.00345,0.7885,
+busbar_main/seg23,busbar_main.t10,busbar_main.t11,bar 40 x 10 mm,,0.22,0.22,156.667,0.00297,0.7885,
+busbar_main/seg24,busbar_main.t11,busbar_main.t12,bar 40 x 10 mm,,0.22,0.22,131.667,0.0025,0.7885,
+busbar_main/seg25,busbar_main.t12,busbar_main.t13,bar 40 x 10 mm,,0.22,0.22,106.667,0.00202,0.7885,
+busbar_main/seg26,busbar_main.t13,busbar_main.t14,bar 40 x 10 mm,,0.22,0.22,81.667,0.00155,0.7885,
+busbar_main/seg27,busbar_main.t14,busbar_main.t15,bar 40 x 10 mm,,0.22,0.22,56.667,0.00107,0.7885,
+busbar_main/seg28,busbar_main.t15,busbar_main.t16,bar 40 x 10 mm,,0.22,0.22,31.667,0.0006,0.7885,
+busbar_main/seg29,busbar_main.t16,busbar_main.tap_flight_computer,bar 40 x 10 mm,,0.1825,0.1825,6.667,0.0001,0.6541,
+busbar_main/seg30,busbar_main.tap_flight_computer,busbar_main.tap_optical_switch_top,bar 40 x 10 mm,,0.06,0.06,5.417,3e-05,0.215,
+busbar_main/seg31,busbar_main.tap_optical_switch_top,busbar_main.tap_edfa_2,bar 40 x 10 mm,,0.06,0.06,1.25,1e-05,0.215,
+busbar_main/seg32,busbar_main.tap_edfa_2,busbar_main.tap_edfa_1,bar 40 x 10 mm,,0.06,0.06,0.625,0.0,0.215,

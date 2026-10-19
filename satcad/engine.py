@@ -221,6 +221,7 @@ class Design:
         self.features: dict[str, Feature] = {}
         self.parts: dict[str, Part] = {}
         self.variables: dict[str, object] = {}
+        self.systems: dict | None = None                                   # wiring / tubing / fibre netlist (see satcad.systems), saved with the design
         self._var_cache: dict[str, float] = {}
         self._var_stack: list[str] = []
         self._built: set[str] = set()
@@ -1155,7 +1156,7 @@ class Design:
             raise
 
     def clear(self, name: str | None = None) -> None:
-        self.features, self.parts, self.variables = {}, {}, {}
+        self.features, self.parts, self.variables, self.systems = {}, {}, {}, None
         if name:
             self.name = name
 
@@ -1438,8 +1439,11 @@ class Design:
         return out
 
     def to_json(self) -> dict:
-        return dict(format="satcad-2", name=self.name, units="mm", variables=self.variables,
+        data = dict(format="satcad-2", name=self.name, units="mm", variables=self.variables,
                     features=[dict(name=f.name, kind=f.kind, params=f.raw) for f in self.features.values()])
+        if self.systems:
+            data["systems"] = self.systems
+        return data
 
     def save(self, path) -> str:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -1457,6 +1461,7 @@ class Design:
         self.variables = dict(data.get("variables", {}))
         for f in data["features"]:
             self.features[f["name"]] = Feature(f["name"], f["kind"], dict(f["params"]))
+        self.systems = data.get("systems") or None
         self.rebuild()
 
 

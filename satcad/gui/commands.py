@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDialogButtonBo
 from PySide6.QtCore import Qt
 
 from ..engine import DesignError
+from ..systems import Systems, SystemsError
 from ..paths import designs_dir
 from .properties import CHOICES, parse_value
 from .session import Session
@@ -337,3 +338,89 @@ class Commands:
             ms = st["margin_of_safety"]
             lines.append(f"  {name}: {st['max_von_mises_mpa']:,.2f} MPa" + ("" if ms is None else f", margin of safety {ms:+.2f}"))
         self.s.message.emit("info", "\n".join(lines))
+
+    # ---- systems: wiring, tubing and fibre -----------------------------------------------------------------------------------------
+    def _systems(self):
+        s = Systems.of(self.s.design)
+        if s is None:
+            self.s.message.emit("warn", "This design has no wiring / tubing / fibre netlist (no Systems data). Open a design that has one, such as the heavy orbital node "
+                                        "in the 'sattelite designs' folder.")
+        return s
+
+    def systems_check(self) -> None:
+        s = self._systems()
+        if s is None:
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            found = s.check(self.s.design)
+            text = s.report(self.s.design)
+        except (SystemsError, DesignError) as e:
+            self.s.message.emit("error", f"Systems check: {e}")
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+        self.s.message.emit("warn" if any(f["severity"] == "error" for f in found) else "info", text)
+
+    def systems_update(self) -> None:
+        s = self._systems()
+        if s is None:
+            return
+        from .. import routing
+
+        def work():
+            try:
+                return routing.update(self.s.design, s)
+            except SystemsError as e:
+                raise DesignError(str(e)) from None
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            done = self.s.run("Updated systems: ports re-read, automatic runs re-routed, tubes redrawn", work)
+        finally:
+            QApplication.restoreOverrideCursor()
+        if done and isinstance(done, dict) and done.get("problems"):
+            self.s.message.emit("warn", "Some ports could not be placed: " + "; ".join(done["problems"][:5]))
+
+    def systems_open(self, which: str) -> None:
+        """Write the drawings to a temporary folder and open one in the browser. which: wiring | cooling | optical | routing."""
+        s = self._systems()
+        if s is None:
+            return
+        from .. import diagrams
+        folder = Path(tempfile.gettempdir()) / f"satcad_systems_{self.s.design.name}"
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            s.sync(self.s.design)
+            res = s.analyse(self.s.design)
+            findings = s.check(self.s.design, include_clash=False)
+            folder.mkdir(parents=True, exist_ok=True)
+            pages = {"wiring": diagrams.wiring_diagram(s, self.s.design, res, findings), "cooling": diagrams.cooling_diagram(s, self.s.design, res, findings),
+                     "optical": diagrams.optical_diagram(s, self.s.design, res, findings), "routing": diagrams.routing_view(s, self.s.design, res)}
+            names = {"wiring": "wiring_diagram.html", "cooling": "cooling_diagram.html", "optical": "optical_diagram.html", "routing": "routing_3d_view.html"}
+            path = folder / names[which]
+            path.write_text(pages[which], encoding="utf-8")
+        except (SystemsError, DesignError, OSError) as e:
+            self.s.message.emit("error", f"Systems drawing: {e}")
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+        self.s.message.emit("info", f"Opened {names[which]} in your browser ({path}).")
+        webbrowser.open(path.as_uri())
+
+    def systems_export(self) -> None:
+        """Write every drawing and the CSV cut lists into a folder named after the design inside the designs folder."""
+        s = self._systems()
+        if s is None:
+            return
+        from .. import diagrams
+        folder = designs_dir() / f"{self.s.design.name}_systems"
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            s.sync(self.s.design)
+            paths = diagrams.write_all(s, self.s.design, folder, include_check=False)
+        except (SystemsError, DesignError, OSError) as e:
+            self.s.message.emit("error", f"Systems export: {e}")
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+        self.s.message.emit("info", f"Wrote {len(paths)} files to {folder}: " + ", ".join(Path(p).name for p in paths.values()))

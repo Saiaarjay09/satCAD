@@ -1,0 +1,91 @@
+loop,stage,id,length_m,inner_diameter_mm,velocity_m_s,reynolds,bends,pressure_drop_pa,volume_l
+Loop A,Pump discharge,discharge_A1,1.8375,36.0,0.6524,103066,4,247.827,1.8703
+Loop A,Cold manifold,cold_manifold_A,3.665,54.0,0.2899,68711,0,33.76,8.3937
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_1,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_2,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_3,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_4,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_5,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_6,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_7,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_8,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_9,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_10,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_11,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_12,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_13,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_14,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_15,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Cold feeders (16 in parallel),cold_feeder_A_16,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Tray cold plates,cold_plates_A,0.0,17.0,0.1828,13641,0,20000.0,0.0
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_1,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_2,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_3,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_4,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_5,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_6,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_7,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_8,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_9,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_10,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_11,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_12,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_13,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_14,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_15,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot feeders (16 in parallel),hot_feeder_A_16,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop A,Hot manifold,hot_manifold_A,3.665,54.0,0.2899,68711,0,33.76,8.3937
+Loop A,Hot line to radiator,hot_line_A,1.44,56.0,0.2696,66257,0,11.146,3.5467
+Loop A,Root header (hot),root_hot_A,2.1,56.0,0.2696,66257,0,16.255,5.1723
+Loop A,Hot radiator tubes (6 in parallel),tubes_hot_A,16.02,32.0,0.1376,19325,0,75.36,77.3043
+Loop A,Tip header,tip_A,4.2,56.0,0.2696,66257,0,32.51,10.3446
+Loop A,Cold radiator tubes (6 in parallel),tubes_cold_A,16.02,32.0,0.1376,19325,0,75.36,77.3043
+Loop A,Root header (cold),root_cold_A,2.1,56.0,0.2696,66257,0,16.255,5.1723
+Loop A,Cold line,cold_line_A,1.12,56.0,0.2696,66257,0,8.669,2.7586
+Loop A,Return to accumulator,return_A,2.765,36.0,0.6524,103066,4,307.399,2.8144
+Loop A,Pump suction,suction_A1,1.77,36.0,0.6524,103066,2,178.588,1.8016
+Loop B,Pump discharge,discharge_B1,1.8375,36.0,0.6524,103066,4,247.827,1.8703
+Loop B,Cold manifold,cold_manifold_B,3.665,54.0,0.2899,68711,0,33.76,8.3937
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_1,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_2,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_3,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_4,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_5,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_6,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_7,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_8,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_9,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_10,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_11,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_12,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_13,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_14,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_15,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Cold feeders (16 in parallel),cold_feeder_B_16,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Tray cold plates,cold_plates_B,0.0,17.0,0.1828,13641,0,20000.0,0.0
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_1,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_2,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_3,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_4,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_5,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_6,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_7,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_8,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_9,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_10,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_11,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_12,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_13,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_14,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_15,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot feeders (16 in parallel),hot_feeder_B_16,0.37,17.0,0.1828,13641,0,6.327,0.084
+Loop B,Hot manifold,hot_manifold_B,3.665,54.0,0.2899,68711,0,33.76,8.3937
+Loop B,Hot line to radiator,hot_line_B,1.44,56.0,0.2696,66257,0,11.146,3.5467
+Loop B,Root header (hot),root_hot_B,2.1,56.0,0.2696,66257,0,16.255,5.1723
+Loop B,Hot radiator tubes (6 in parallel),tubes_hot_B,16.02,32.0,0.1376,19325,0,75.36,77.3043
+Loop B,Tip header,tip_B,4.2,56.0,0.2696,66257,0,32.51,10.3446
+Loop B,Cold radiator tubes (6 in parallel),tubes_cold_B,16.02,32.0,0.1376,19325,0,75.36,77.3043
+Loop B,Root header (cold),root_cold_B,2.1,56.0,0.2696,66257,0,16.255,5.1723
+Loop B,Cold line,cold_line_B,1.12,56.0,0.2696,66257,0,8.669,2.7586
+Loop B,Return to accumulator,return_B,3.0222,36.0,0.6524,103066,5,356.372,3.0763
+Loop B,Pump suction,suction_B1,1.77,36.0,0.6524,103066,2,178.588,1.8016

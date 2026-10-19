@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
         self._fit_next = True
         self.picked_face = None                                # (body name, face info) after a click in Face mode
         self.xray = False
+        self.layers_on = {"power": True, "optical": True, "fluid": True, "shell": True}
         self._refresh_all()
         self._update_title()
 
@@ -214,6 +215,24 @@ class MainWindow(QMainWindow):
         g.add_button("Spherical", "sphere", lambda: self.add_joint("spherical"), "Gimbal: two rotations (pitch / yaw) about a pivot")
         g = mo.add_group("Setup")
         g.add_button("Clear", "delete", lambda: self.motion and self.motion.clear(), "Remove all equations, joints and colour animations")
+
+        sy = r.add_tab("Systems")
+        g = sy.add_group("Drawings")
+        g.add_button("Wiring", "sys_wire", lambda: c.systems_open("wiring"), "48 V wiring diagram: sources, busbar, every cable and bar with gauge, current and voltage drop")
+        g.add_button("Cooling", "sys_pipe", lambda: c.systems_open("cooling"), "Cooling diagram of each coolant loop: pumps, manifolds, cold plates, radiator, flow and pressure drop")
+        g.add_button("Optical", "sys_fibre", lambda: c.systems_open("optical"), "Optical data diagram: turrets, EDFAs, switches, trunk, loss and latency")
+        g.add_button("3D Routing", "sys_route3d", lambda: c.systems_open("routing"), "Interactive 3D picture of every cable, tube and fibre run inside the hull")
+        g = sy.add_group("Engineering")
+        g.add_button("Check", "check", c.systems_check, "Engineering-rule checks: current density, voltage drop, flow speed, pump head, radiator, fibre bends and loss, clearances, clashes")
+        g.add_button("Update", "sys_update", c.systems_update, "After editing the model: re-read the ports, re-route the automatic runs and redraw their tubes")
+        g = sy.add_group("Export")
+        g.add_button("Schedules", "sys_table", c.systems_export, "Write every drawing and the CSV cut lists (wires, tubes, fibres) into the designs folder")
+        g = sy.add_group("Show")
+        self._layer_buttons = {}
+        for key, label, ic in (("power", "Power", "sys_wire"), ("optical", "Optical", "sys_fibre"), ("fluid", "Cooling", "sys_pipe"), ("shell", "Shell", "block")):
+            self._layer_buttons[key] = g.add_button(label, ic, lambda _=False, k=key: self.set_layer_visible(k, self._layer_buttons[k].isChecked()),
+                                                    f"Show or hide everything on the '{key}' layer", checkable=True)
+            self._layer_buttons[key].setChecked(True)
 
         view = r.add_tab("View")
         g = view.add_group("Orient")
@@ -305,10 +324,10 @@ class MainWindow(QMainWindow):
         s.selection_changed.connect(self._on_selection)
         s.dirty_changed.connect(lambda _d: self._update_title())
         nav.selected.connect(s.select)
-        nav.visibility_changed.connect(v.set_visible)
+        nav.visibility_changed.connect(lambda *_: self._apply_hidden())
         nav.delete_requested.connect(s.remove)
         if hasattr(v, "set_hidden"):
-            nav.hidden_changed.connect(v.set_hidden)
+            nav.hidden_changed.connect(lambda *_: self._apply_hidden())
         if hasattr(v, "body_clicked"):
             v.body_clicked.connect(lambda part, _ctrl: s.select(self._feature_for(part)))
             v.context_requested.connect(self._viewport_menu)
@@ -340,6 +359,24 @@ class MainWindow(QMainWindow):
     # ---- layers: X-ray and bulk visibility -------------------------------------------------------------------------------------------
     XRAY_OPACITY = 0.15                                              # 85% transparent
 
+    def _effective_hidden(self) -> set:
+        """Parts hidden in the Part Navigator, plus every part on a layer that is switched off in the Systems tab."""
+        hidden = set(self.navigator.hidden)
+        off = {k for k, on in self.layers_on.items() if not on}
+        if off:
+            hidden |= {n for n, p in self.session.design.parts.items() if p.params.get("layer") in off}
+        return hidden
+
+    def _apply_hidden(self) -> None:
+        if hasattr(self.viewport, "set_hidden"):
+            self.viewport.set_hidden(self._effective_hidden())
+
+    def set_layer_visible(self, layer: str, on: bool) -> None:
+        self.layers_on[layer] = bool(on)
+        if hasattr(self, "_layer_buttons") and layer in self._layer_buttons:
+            self._layer_buttons[layer].setChecked(bool(on))
+        self._apply_hidden()
+
     def xray_map(self) -> dict:
         """{part: opacity} for X-ray mode: parts on the 'shell' layer (hull, trays, skins) become 85% transparent; everything else stays solid."""
         if not self.xray:
@@ -362,6 +399,10 @@ class MainWindow(QMainWindow):
             self.session.message.emit("info", "X-Ray on: shell parts are 85% transparent, everything else is solid." if self.xray else "X-Ray off.")
 
     def show_all_parts(self) -> None:
+        for key in self.layers_on:
+            self.layers_on[key] = True
+            if key in getattr(self, "_layer_buttons", {}):
+                self._layer_buttons[key].setChecked(True)
         self.navigator.show_all()
 
     def set_filter(self, mode: str) -> None:
@@ -385,7 +426,7 @@ class MainWindow(QMainWindow):
     def _refresh_all(self) -> None:
         self.picked_face = None
         fit, self._fit_next = self._fit_next, False
-        self.viewport.set_design(self.session.design, hidden=self.navigator.hidden, selected=self._part_for(self.session.selected), fit=fit)
+        self.viewport.set_design(self.session.design, hidden=self._effective_hidden(), selected=self._part_for(self.session.selected), fit=fit)
         self._apply_xray()
         self.undo_action.setEnabled(self.session.can_undo)
         self.redo_action.setEnabled(self.session.can_redo)

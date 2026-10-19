@@ -244,6 +244,7 @@ class Viewport(QWidget):
         self._picker = vtkPropPicker()
         self._surfaces: dict[str, vtkActor] = {}
         self._edges: dict[str, vtkActor] = {}
+        self._thin: dict[str, bool] = {}                                  # cables and fibres: thinner than a few pixels, so their edge lines carry the colour
         self._base_color: dict[str, tuple] = {}
         self._by_actor: dict[int, str] = {}
         self._faces: dict[str, list] = {}
@@ -348,7 +349,7 @@ class Viewport(QWidget):
         for actors in (self._surfaces, self._edges):
             for a in actors.values():
                 self.ren.RemoveActor(a)
-        self._surfaces, self._edges, self._base_color, self._by_actor = {}, {}, {}, {}
+        self._surfaces, self._edges, self._base_color, self._by_actor, self._thin = {}, {}, {}, {}, {}
         self._faces, self._parts = {}, {}
         self.clear_face()
         self._hidden = set(hidden or ())
@@ -374,6 +375,9 @@ class Viewport(QWidget):
             self.ren.AddActor(edges)
             self._surfaces[name], self._edges[name] = surf, edges
             self._base_color[name] = tuple(part.color)
+            lo, hi = part.bbox()
+            radius = part.params.get("radius") if part.kind == "sweep" else None
+            self._thin[name] = (radius is not None and radius < 8.0) or sorted(h - l for l, h in zip(lo, hi))[1] < 8.0     # a thin swept cable, or two small dimensions
             self._by_actor[id(surf)] = name
         self._selected = selected if selected in self._surfaces else None
         self._rebind_groups()
@@ -415,8 +419,9 @@ class Viewport(QWidget):
             surf.SetPickable(op >= 0.5)                                    # you can click through see-through parts (X-ray) to what is inside
             sel = name == self._selected
             surf.GetProperty().SetColor(*(theme.SELECT_COLOR if sel else self._color_override.get(name, self._base_color[name])))
-            self._edges[name].GetProperty().SetColor(*((1.0, 0.85, 0.3) if sel else theme.EDGE_COLOR))
-            self._edges[name].GetProperty().SetLineWidth((2.0 if sel else 1.0) * self._ss)     # whole pixels: fractional widths are ~5x slower
+            thin = self._thin.get(name, False)
+            self._edges[name].GetProperty().SetColor(*((1.0, 0.85, 0.3) if sel else self._color_override.get(name, self._base_color[name]) if thin else theme.EDGE_COLOR))
+            self._edges[name].GetProperty().SetLineWidth((2.0 if sel or thin else 1.0) * self._ss)     # whole pixels: fractional widths are ~5x slower
 
     def set_selected(self, name: str | None) -> None:
         self._selected = name if name in self._surfaces else None

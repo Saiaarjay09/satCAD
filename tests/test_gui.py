@@ -296,7 +296,7 @@ def test_main_window_wires_every_panel_together(viewport, tmp_path):
     session.message.emit("error", "boom")
     assert "boom" in win.info.toPlainText()
     ribbon_tabs = [win.ribbon.tabText(i) for i in range(win.ribbon.count())]
-    assert ribbon_tabs == ["Home", "Assemblies", "Simulate", "Motion", "View"]
+    assert ribbon_tabs == ["Home", "Assemblies", "Simulate", "Motion", "Systems", "View"]
     from PySide6.QtWidgets import QDockWidget
     assert {"Part Navigator", "Property Editor", "Information"} <= {d.windowTitle() for d in win.findChildren(QDockWidget)}
 

@@ -202,7 +202,7 @@ def test_cli_saves_json_and_step_into_the_designs_folder(tmp_path, monkeypatch, 
     assert (tmp_path / "t_heavy.json").exists() and (tmp_path / "t_heavy.step").stat().st_size > 100_000
     back = Design("x")
     back.load(tmp_path / "t_heavy.json")
-    assert len(back.parts) == 320 and back.variables["TRAY_PITCH_MM"] == 220
+    assert len(back.parts) == 343 and back.variables["TRAY_PITCH_MM"] == 220
 
 
 def test_cli_set_overrides_and_no_save(tmp_path, monkeypatch, capsys):

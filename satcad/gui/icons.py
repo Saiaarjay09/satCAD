@@ -334,11 +334,77 @@ def _expr(p):
     p.drawText(QRectF(2, 2, 28, 28), Qt.AlignCenter, "fx")
 
 
+ORANGE = QColor("#ff9a1f")
+CYAN = QColor("#27c9ff")
+
+
+def _sys_wire(p):
+    _pen(p, ORANGE, 2.4)
+    p.setBrush(Qt.NoBrush)
+    p.drawPolyline(_poly([(5, 24), (5, 10), (16, 10), (16, 22), (27, 22), (27, 8)]))
+    p.setBrush(LINE)
+    _pen(p, QColor("#101318"), 1.0)
+    for x, y in ((5, 24), (27, 8)):
+        p.drawEllipse(QPointF(x, y), 3.2, 3.2)
+
+
+def _sys_pipe(p):
+    p.setBrush(Qt.NoBrush)
+    _pen(p, RED, 4.2)
+    p.drawPolyline(_poly([(4, 9), (17, 9), (17, 17)]))
+    _pen(p, FILL, 4.2)
+    p.drawPolyline(_poly([(15, 25), (28, 25), (28, 17)]))
+    _pen(p, LINE, 1.4)
+    p.drawLine(QPointF(17, 17), QPointF(15, 25))
+
+
+def _sys_fibre(p):
+    p.setBrush(Qt.NoBrush)
+    _pen(p, CYAN, 2.4)
+    path = QPainterPath()
+    path.moveTo(4, 24)
+    path.cubicTo(4, 8, 28, 28, 28, 8)
+    p.drawPath(path)
+    p.setBrush(CYAN)
+    _pen(p, QColor("#101318"), 1.0)
+    for x, y in ((4, 24), (28, 8)):
+        p.drawEllipse(QPointF(x, y), 3.0, 3.0)
+
+
+def _sys_route3d(p):
+    _pen(p, QColor("#7c8794"), 1.2)
+    p.setBrush(Qt.NoBrush)
+    p.drawPolygon(_poly([(16, 3), (28, 9), (28, 23), (16, 29), (4, 23), (4, 9)]))
+    p.drawLine(QPointF(16, 15), QPointF(16, 29))
+    p.drawLine(QPointF(16, 15), QPointF(4, 9))
+    p.drawLine(QPointF(16, 15), QPointF(28, 9))
+    _pen(p, ORANGE, 2.4)
+    p.drawPolyline(_poly([(8, 21), (14, 24), (14, 17), (22, 21), (22, 12)]))
+
+
+def _sys_update(p):
+    _pen(p, GREEN, 2.4)
+    p.setBrush(Qt.NoBrush)
+    p.drawArc(QRectF(6, 6, 20, 20), 40 * 16, 270 * 16)
+    p.setBrush(GREEN)
+    p.drawPolygon(_poly([(24, 3), (28, 13), (18, 11)]))
+
+
+def _sys_table(p):
+    _pen(p, LINE, 1.4)
+    p.setBrush(Qt.NoBrush)
+    p.drawRect(QRectF(4, 6, 24, 20))
+    p.drawLine(QPointF(4, 12), QPointF(28, 12))
+    p.drawLine(QPointF(4, 19), QPointF(28, 19))
+    p.drawLine(QPointF(14, 6), QPointF(14, 26))
+
+
 _DRAW = {"block": _block, "cylinder": _cylinder, "sphere": _sphere, "extrude": _extrude, "revolve": _revolve, "unite": _unite,
          "subtract": _subtract, "intersect": _intersect, "blend": _blend, "chamfer": _chamfer, "hole": _hole, "shell": _shell,
          "datum": _datum, "assembly": _assembly, "hinge": _hinge, "check": _check, "mass": _mass, "modal": _modal, "static": _static,
          "new": _new, "open": _open, "save": _save, "undo": _undo, "redo": _redo, "delete": _delete, "export": _export, "fit": _fit,
-         "shaded": _shaded, "wire": _wire, "expr": _expr,
+         "shaded": _shaded, "wire": _wire, "expr": _expr, "sys_wire": _sys_wire, "sys_pipe": _sys_pipe, "sys_fibre": _sys_fibre, "sys_route3d": _sys_route3d,
+         "sys_update": _sys_update, "sys_table": _sys_table,
          "view_iso": lambda p: _view(p, "iso"), "view_top": lambda p: _view(p, "top"), "view_front": lambda p: _view(p, "front"),
          "view_right": lambda p: _view(p, "right"), "view_left": lambda p: _view(p, "left")}
 _CACHE: dict = {}
