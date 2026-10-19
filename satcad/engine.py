@@ -93,10 +93,12 @@ SCHEMAS: dict[str, dict] = {
     "pattern": {"source": REQ, "mode": REQ, "count": REQ, "dx": 0.0, "dy": 0.0, "dz": 0.0, "axis": "z",
                 "cx": 0.0, "cy": 0.0, "cz": 0.0, "total_angle": 360.0, "assembly": None},
     "mirror": {"source": REQ, "plane": REQ, "offset": 0.0, "assembly": None},
+    "boolean": {"operation": REQ, "target": REQ, "tool": REQ},
     "assembly": {"parent": None, "x": 0.0, "y": 0.0, "z": 0.0, "rx": 0.0, "ry": 0.0, "rz": 0.0,
                  "joint_axis": None, "angle_deg": 0.0, "pivot_x": 0.0, "pivot_y": 0.0, "pivot_z": 0.0,
                  "angle_min": -180.0, "angle_max": 180.0, "notes": ""},
 }
+BOOLEAN_OPS = ("unite", "subtract", "intersect")
 _POSITIVE = {"length", "width", "height", "radius", "thickness", "depth", "diameter"}
 _ZERO_OK = {("cutout", "depth"), ("hole", "depth"), ("fillet_edges", "radius")}    # 0 means "through" / "not used"
 
@@ -386,6 +388,11 @@ class Design:
                 raise DesignError("'angle' must be greater than 0 and at most 360 degrees.")
             if full["axis"] not in AXES:
                 raise DesignError("A revolve's axis must be 'x', 'y' or 'z'.")
+        if kind == "boolean":
+            if str(full["operation"]).lower() not in BOOLEAN_OPS:
+                raise DesignError(f"A boolean operation must be one of: {', '.join(BOOLEAN_OPS)}.")
+            if full["target"] == full["tool"]:
+                raise DesignError("A boolean needs two different bodies: the target and the tool.")
         if kind == "cutout":
             side = str(full["side"]).lower()
             if len(side) != 2 or side[0] not in "+-" or side[1] not in AXES:
@@ -655,6 +662,8 @@ class Design:
             self._build_assembly(f)
         elif kind == "cutout":
             self._apply_cutout(f)
+        elif kind == "boolean":
+            self._apply_boolean(f)
         elif kind == "pattern":
             self._build_pattern(f)
         elif kind == "mirror":
@@ -968,6 +977,35 @@ class Design:
         cut.label, cut.color = part.name, Color(*part.color)
         part.solid = cut
 
+    def _apply_boolean(self, f: Feature) -> None:
+        """Unite / subtract / intersect two bodies. The result keeps the target's name; the tool body is consumed (as in NX)."""
+        p = f.params
+        op = str(p["operation"]).lower()
+        target, tool = self._target(p["target"], "target body"), self._target(p["tool"], "tool body")
+        before = target.solid.volume
+        if op == "unite":
+            result = target.solid + tool.solid
+        elif op == "subtract":
+            result = target.solid - tool.solid
+        else:
+            result = target.solid & tool.solid
+        try:
+            volume = float(result.volume)
+            pieces = len(result.solids())
+        except Exception:
+            volume, pieces = 0.0, 0
+        if op == "intersect" and volume <= 1e-6:
+            raise DesignError(f"The intersection of '{target.name}' and '{tool.name}' is empty: the bodies do not overlap.")
+        if op == "subtract" and abs(volume - before) < 1e-6:
+            raise DesignError(f"Subtracting '{tool.name}' removed nothing from '{target.name}': the bodies do not overlap.")
+        if op == "unite" and pieces != 1:
+            raise DesignError(f"'{target.name}' and '{tool.name}' do not touch or overlap, so they cannot be united into one body.")
+        if pieces == 0 or volume <= 1e-6:
+            raise DesignError(f"The result of the {op} would be empty.")
+        result.label, result.color = target.name, Color(*target.color)
+        target.solid = result
+        del self.parts[tool.name]
+
     def _derive(self, src: Part, name: str, fn) -> Part:
         solid = fn(src.solid)
         solid.label, solid.color = name, Color(*src.color)
@@ -1060,7 +1098,7 @@ class Design:
         for f in self.features.values():
             if f.name == name:
                 continue
-            refs = [f.raw.get(k) for k in ("attach_to", "target", "source", "assembly", "parent")]
+            refs = [f.raw.get(k) for k in ("attach_to", "target", "tool", "source", "assembly", "parent")]
             if name in refs or any(self._mentions(v, attr) for v in f.raw.values()):
                 out.append(f.name)
         out += [v for v, raw in self.variables.items() if is_expression(raw) and attr.search(raw)]
@@ -1359,8 +1397,11 @@ class Design:
         return str(path)
 
     def load(self, path) -> None:
-        data = json.loads(Path(path).read_text())
-        if data.get("format") not in ("satcad-1", "satcad-2"):
+        self.load_data(json.loads(Path(path).read_text()))
+
+    def load_data(self, data: dict) -> None:
+        """Replace this design with one described by a to_json() dictionary (what load() reads from a file)."""
+        if not isinstance(data, dict) or data.get("format") not in ("satcad-1", "satcad-2"):
             raise DesignError("That file isn't a satcad design.")
         self.clear(data.get("name", "satellite"))
         self.variables = dict(data.get("variables", {}))

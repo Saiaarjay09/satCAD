@@ -343,6 +343,16 @@ def add_mirror(name: str, source: str, plane: str, offset: Num = 0.0,
 
 
 @mcp.tool()
+def add_boolean(name: str, operation: str, target: str, tool: str) -> dict:
+    """
+    Combine two bodies: 'unite' (join into one), 'subtract' (cut the tool out of the target) or 'intersect' (keep only the shared
+    volume). The result keeps the TARGET's name and settings; the tool body is consumed and disappears from the design, as in NX.
+    The two bodies must overlap (for unite they must at least touch). To keep the tool, add a copy first.
+    """
+    return _changed(_add(None, "boolean", name, operation=operation, target=target, tool=tool))
+
+
+@mcp.tool()
 def add_assembly(name: str, parent: str | None = None, x: Num = 0.0, y: Num = 0.0, z: Num = 0.0,
                  rx: Num = 0.0, ry: Num = 0.0, rz: Num = 0.0, joint_axis: str | None = None, angle_deg: Num = 0.0,
                  pivot_x: Num = 0.0, pivot_y: Num = 0.0, pivot_z: Num = 0.0, angle_min: Num = -180.0,

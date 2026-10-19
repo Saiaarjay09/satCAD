@@ -27,6 +27,7 @@ problems only · **No** = not there · **Ahead** = SatCAD does something NX does
 | Extrude / revolve | Yes | Yes, with taper, both sides, hollow tubes | Parity-ish | |
 | Sweep / loft | Yes | Sweep along a polyline with tangent bends; loft between circle/rect sections | Partial | No guide curves, no twist, no sharp-corner sweeps |
 | Shell / thin-wall | Yes | Shell with open faces, inward or outward | Partial | Fails near tight fillets (reports why) |
+| Boolean operations (unite, subtract, intersect) | Yes | Between any two bodies; the tool body is consumed; friendly errors when bodies do not overlap | Parity-ish | Operates on whole bodies only; no multi-tool or retained-tool options |
 | Fillet / chamfer on chosen edges | Yes, variable radius, blends | Fixed radius or chamfer on edge groups (`all`, `parallel:z`, `face:+z`) | Partial | No variable radius, no face blends |
 | Holes with standards | Hole feature with standard sizes | ISO 273 clearance, tapped, DIN 974 counterbore, countersink; M3-M12; patterns | Partial | Threads are cosmetic; no inch or other standards |
 | Fasteners | Library | ISO 4762 socket-head screw (head, socket, shank); engagement check against tapped holes | Partial | Only one fastener family |
@@ -61,6 +62,7 @@ problems only · **No** = not there · **Ahead** = SatCAD does something NX does
 
 | Capability | NX | SatCAD today | Status | Gap |
 |---|---|---|---|---|
+| Desktop user interface | Ribbon, Part Navigator, property panels, 3D viewport | A Qt desktop app in the same layout: ribbon, feature tree, property editor, shaded viewport with edges, undo / redo | Partial | Far fewer commands and no sketching; selection is whole-body only (no face / edge picking yet) |
 | STEP export | AP203/214/242 | STEP with part names and colours | Partial | No PMI or assembly metadata beyond names |
 | STEP import | Yes | No | No | Needed to use vendor parts |
 | 2D drawings, GD&T, PMI | Yes | No | No | |

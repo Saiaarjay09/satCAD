@@ -35,6 +35,51 @@ warning; [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) explains the two clicks 
 
 ---
 
+## The desktop application (Qt + VTK)
+
+A full desktop window in the layout of a professional CAD package: **ribbon** across the top (Home, Assemblies, Simulate, View), **Part Navigator**
+feature tree on the left (Datum CSYS(0), Block(1), Cylinder(2), Unite(3), Edge Blend(4) ...), **Property Editor** on the right (the parametric
+dimensions of whatever is selected, plus an Expressions tab), a shaded **3D viewport** with edge highlights in the centre, and an Information window
+for messages and results. Dark theme throughout. It is NX-*inspired* (layout and workflow); it uses none of Siemens' artwork or code.
+
+![The satCAD desktop application](docs/satcad_app.png)
+
+**Install and run** (Python 3.10 or newer; the graphics libraries are large, roughly 400 MB):
+
+```bash
+pip install -r requirements.txt          # CAD kernel (build123d / OpenCASCADE) and the engine
+pip install PySide6 vtk                  # the interface (Qt for Python) and the 3D renderer (VTK)   [same as requirements-gui.txt]
+python main.py --demo                    # or:  python -m satcad.gui  [saved_part.json]
+```
+
+**What you can do:** click a body to select it; edit any dimension in the Property Editor (numbers or `=formulas`) and the part rebuilds; create
+Blocks, Cylinders and Spheres; **Unite / Subtract / Intersect** two bodies (the tool body is consumed, as in NX); **Edge Blend**, **Chamfer**, **Hole**
+(ISO sizes) and **Shell**; group parts into **assemblies** with hinges; run **Interference** and **Mass Properties**; run the BETA **modal / static**
+structural analysis; **undo / redo** every change; open and save parts (`.json`, the same files Claude and the Studio app use); export **STEP / STL / GLB**.
+
+**Mouse:** left click selects, **middle drag rotates**, **Shift + middle drag pans**, wheel or two-finger scroll zooms, right drag zooms, right click opens a
+menu. With no middle button (Mac trackpad): **Alt + left drag rotates, Alt + Shift + left drag pans**. Keys: Ctrl+Z / Ctrl+Y, Delete, F (fit), Home (isometric).
+
+**How the geometry kernel and the 3D viewport are connected**
+
+1. **Kernel.** Parts are exact B-rep solids in **OpenCASCADE**, accessed through build123d's `cadquery-ocp` bindings. We stay on that binding rather than
+   PythonOCC, because PythonOCC is a separate set of OpenCASCADE wrappers (mostly conda-installed) whose shape objects cannot be mixed with the ones the engine
+   already builds, so adopting it would mean rewriting the whole engine for no gain.
+2. **Tessellation.** `viewport.part_polydata()` asks OpenCASCADE to triangulate each solid and packs the triangles into a `vtkPolyData`; a `vtkPolyDataNormals`
+   filter computes smooth normals that split at sharp edges, so cylinders shade smoothly while box faces stay flat.
+3. **Edges.** `viewport.part_edges()` samples the solid's real B-rep edges into polylines drawn in dark lines over the shaded surface: the "shaded with edges" look.
+4. **Rendering.** Each body is two VTK actors (surface, edges) in one `vtkRenderer` with Phong shading, a three-point light kit and polygon offset (so edges never
+   flicker against surfaces). VTK renders into an **off-screen** window; the frame is read back, supersampled 2x for smooth edges, and painted by an ordinary Qt widget.
+   (The stock VTK-in-Qt widget embeds a native GL surface; it hangs on some recent macOS releases, and the off-screen route behaves identically on macOS, Windows and Linux.)
+5. **Interaction.** Mouse events are translated into camera moves (a turntable orbit that keeps Z up, pan, dolly) in `viewport.py`; picking uses VTK's `vtkPropPicker`,
+   and a click selects the matching feature in the Part Navigator. Selection, visibility checkboxes and the tree stay in sync through Qt signals on a single `Session`
+   object that wraps the engine and keeps undo history.
+
+The Claude connector and the browser-based Studio keep their own lightweight renderers (matplotlib pictures and three.js), because they must work without a graphics
+stack; the desktop application does not use them.
+
+---
+
 ## Contents
 
 1. [What you can do with it](#1-what-you-can-do-with-it)
@@ -101,7 +146,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`286 passed` and the path of the connector.
+`311 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -437,6 +482,8 @@ Open-source-CAD-software/
 ├── setup.sh                  one-time installer: environment + libraries + tests (+ optional Claude registration)
 ├── build_satellite.py        THE ORBITAL DATACENTRE: builds the whole satellite from variables at its top
 ├── orbital_datacentre_model.py  same as build_satellite.py under the name used in the original brief (it just runs it)
+├── main.py                   starts the desktop application (Qt + VTK):  python main.py
+├── requirements-gui.txt      the extra libraries for the desktop application (PySide6, vtk)
 ├── studio_app.py             entry point of the SatCAD Studio app
 ├── studio.spec / studio.iss  recipes that package Studio (PyInstaller) and make the Windows installer (Inno Setup)
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
@@ -452,6 +499,17 @@ Open-source-CAD-software/
 │   │                         No Claude code in here.
 │   ├── expressions.py        the safe formula interpreter behind variables and "=formulas"
 │   ├── viewer.py             writes the interactive 3D viewer (assembly tree, hinge sliders) and the animated mode-shape viewer
+│   ├── gui/                  THE DESKTOP APPLICATION (PySide6 + VTK)
+│   │   ├── main.py           entry point and demo part
+│   │   ├── ui_layout.py      the main window: ribbon, Part Navigator, Property Editor, viewport, Information window, menus, wiring
+│   │   ├── viewport.py       the 3D viewport: OpenCASCADE solids to VTK, off-screen rendering, camera, picking
+│   │   ├── ribbon.py         the tabbed ribbon widget
+│   │   ├── navigator.py      the Part Navigator feature tree
+│   │   ├── properties.py     the Property Editor and Expressions list
+│   │   ├── commands.py       ribbon commands and their dialogs (Boolean, Edge Blend, Hole, Shell, analysis, export)
+│   │   ├── session.py        the open document: wraps the engine, undo / redo, change signals
+│   │   ├── theme.py          the dark theme
+│   │   └── icons.py          icons drawn in code (no image files)
 │   ├── studio.py             SatCAD Studio: the local editor server (parts, variables, check, analyse, open/save/export)
 │   ├── static/               studio.html (the editor page) and the bundled three.js 3D library, so Studio works offline
 │   ├── fem.py                the shell finite-element solver (BETA): modal and static analysis of flat-plate structures
@@ -460,7 +518,7 @@ Open-source-CAD-software/
 │   ├── thermal.py            size_radiator(): radiator area needed for a heat load
 │   ├── power.py              size_solar_array(): solar array area needed for a power load
 │   ├── render.py             draws the four-view PNG picture
-│   └── server.py             THE CONNECTOR: wraps the engine as 42 MCP tools Claude can call
+│   └── server.py             THE CONNECTOR: wraps the engine as 43 MCP tools Claude can call
 │
 ├── examples/
 │   ├── hello_satellite.py    chassis + two radiators; the numbers to change are at the top
@@ -478,6 +536,7 @@ Open-source-CAD-software/
 │   ├── test_materials.py     the materials database
 │   ├── test_fem.py           the FE solver against closed-form plate, membrane and vibration solutions
 │   ├── test_fem_design.py    CAD design to FE model: ties, supports, mass match, loose parts, reactions
+│   ├── test_gui.py           the desktop application, headless: session / undo, navigator, property editor, viewport geometry, camera and mouse, window wiring
 │   ├── test_studio.py        the Studio server: safety checks, add/edit, open/save round trip, export, analysis
 │   ├── test_server.py        launches the real server and talks to it like Claude does
 │   └── test_build_satellite.py  checks the satellite: subsystems, hinges and stowing, bolted optics, validation, analysis, command line
@@ -540,6 +599,7 @@ All sizes are in **mm**, masses in **kg**. Settings marked `?` are optional.
 | `open_3d_viewer` | Write and open the interactive 3D viewer. | `open_in_browser?` |
 | `size_radiator` | Radiator area for a heat load (Stefan-Boltzmann). | `heat_load_w, panel_temp_k?, emissivity?, sides?, sink_temp_k?, panel_count?, aspect_length_over_width?` |
 | `size_solar_array` | Solar-cell area for an electrical load. | `power_w, cell_efficiency?, packing_factor?, end_of_life_factor?, sun_angle_deg?, panel_count?, aspect_length_over_width?` |
+| `add_boolean` | Unite, subtract or intersect two bodies. The result keeps the target's name; the tool body is consumed. | `name, operation, target, tool` |
 | `add_assembly` | A named group of parts. With `joint_axis` it becomes a hinge (stow / deploy). | `name, parent?, x?, y?, z?, rx?, ry?, rz?, joint_axis?, angle_deg?, pivot_x?, pivot_y?, pivot_z?, angle_min?, angle_max?` |
 | `list_assemblies` | The product tree with rolled-up mass, centre of mass and principal inertias. | none |
 | `list_joints` | Each hinge: world pivot and axis, current angle and range, parts moved. | none |
@@ -592,6 +652,7 @@ Parts that are not attached to something also take a **pose**: `x, y, z` (centre
 | `fillet_edges` | `target`, `edges` (`all`, `parallel:x/y/z`, `face:+x ...`), `radius` or `chamfer`. Changes `target` |
 | `hole` | `target`, `side`, `standard` (`M3` ... `M12`), `hole_type` (`clearance`, `tapped`, `counterbore`, `countersink`), `depth` (0 = through), grid (`count_u pitch_u count_v pitch_v`) or bolt circle (`circle_count circle_diameter circle_start_deg`). Changes `target` |
 | `fastener` | `size`, `length`, `axis`, a position; material defaults to `stainless_316` |
+| `boolean` | `operation` (`unite`, `subtract`, `intersect`), `target`, `tool`. The result keeps the target's name; the tool body is consumed |
 | `mirror` | `source`, `plane` (`xy` flips Z, `yz` flips X, `zx` flips Y), `offset` (0) |
 
 Cutouts, patterns and mirrors **follow** their target or source: edit the original and they update.
@@ -610,7 +671,7 @@ expansion and conductivity. These are typical room-temperature values, not desig
 
 ```
  You  ──►  Claude  ──(MCP, over stdin/stdout)──►  server.py  ──►  engine.py  ──►  build123d / OpenCascade
- words      picks a tool                          42 tools        recipes →        solids, booleans,
+ words      picks a tool                          43 tools        recipes →        solids, booleans,
                                                   + autosave      geometry         STEP/STL/GLB export
                                                        │
                                                        ├──►  render.py → PNG picture back to Claude
@@ -659,7 +720,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-286 tests. They include:
+311 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.

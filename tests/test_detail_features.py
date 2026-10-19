@@ -347,3 +347,52 @@ def test_a_screw_through_solid_metal_is_still_an_overlap():
     d.add("fastener", "s", size="M6", length=12, z=0)
     result = d.check()
     assert not result["ok"] and result["overlaps"] and not result["thread_engagements"]
+
+
+# ---- boolean operations (unite / subtract / intersect) ------------------------------------------------------------------------
+def _two_boxes(offset=50):
+    d = Design("bool")
+    d.add("box", "a", length=100, width=100, height=100)
+    d.add("box", "b", x=offset, length=100, width=100, height=100)
+    return d
+
+
+def test_boolean_unite_merges_two_bodies_into_one():
+    d = _two_boxes()
+    d.add("boolean", "u", operation="unite", target="a", tool="b")
+    assert list(d.parts) == ["a"]                                         # the tool body is consumed
+    assert d.describe("a")["volume_cm3"] == pytest.approx(1500.0)          # 150 x 100 x 100 mm
+
+
+def test_boolean_subtract_and_intersect_volumes():
+    d = _two_boxes()
+    d.add("boolean", "s", operation="subtract", target="a", tool="b")
+    assert d.describe("a")["volume_cm3"] == pytest.approx(500.0)
+    e = _two_boxes()
+    e.add("boolean", "i", operation="intersect", target="a", tool="b")
+    assert e.describe("a")["volume_cm3"] == pytest.approx(500.0)
+
+
+def test_boolean_errors_are_friendly_and_roll_back():
+    d = _two_boxes(offset=1000)
+    for op, text in (("unite", "do not touch"), ("subtract", "removed nothing"), ("intersect", "empty")):
+        with pytest.raises(DesignError, match=text):
+            d.add("boolean", "x", operation=op, target="a", tool="b")
+    assert list(d.parts) == ["a", "b"] and "x" not in d.features          # nothing half-applied
+    with pytest.raises(DesignError, match="one of"):
+        d.add("boolean", "x", operation="merge", target="a", tool="b")
+    with pytest.raises(DesignError, match="two different"):
+        d.add("boolean", "x", operation="unite", target="a", tool="a")
+    with pytest.raises(DesignError, match="doesn't exist"):
+        d.add("boolean", "x", operation="unite", target="a", tool="ghost")
+
+
+def test_boolean_feature_tracks_dimension_changes_and_protects_its_inputs():
+    d = _two_boxes()
+    d.add("boolean", "u", operation="unite", target="a", tool="b")
+    d.edit("a", length=200)
+    assert d.describe("a")["volume_cm3"] > 1500
+    with pytest.raises(DesignError, match="Remove those first"):
+        d.remove("b")                                                      # the tool is used by the boolean
+    d.remove("u")
+    assert set(d.parts) == {"a", "b"}
