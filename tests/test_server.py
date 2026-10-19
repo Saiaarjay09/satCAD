@@ -5,6 +5,7 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -154,5 +155,65 @@ def test_new_capabilities_over_the_protocol(tmp_path):
                 viewer = json.loads(_text(await call("open_3d_viewer", {"open_in_browser": False})))
                 html = open(viewer["path"], encoding="utf-8").read()
                 assert "three.min.js" in html and "strut" in html and "const D = " in html
+
+    _run(scenario())
+
+
+def test_assemblies_hole_fastener_and_analysis_over_the_protocol(tmp_path):
+    async def scenario():
+        params = StdioServerParameters(command=sys.executable, args=["-m", "satcad.server"], cwd=str(ROOT_DIR),
+                                       env={**os.environ, "SATCAD_OUT": str(tmp_path)})
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as s:
+                await s.initialize()
+                tools = {t.name for t in (await s.list_tools()).tools}
+                assert {"add_assembly", "list_assemblies", "list_joints", "add_shell", "add_sweep", "add_loft",
+                        "add_fillet_edges", "add_hole", "add_fastener", "analyze_modal", "analyze_static"} <= tools
+                call = s.call_tool
+                await call("design_new", {"name": "fe"})
+                await call("set_variable", {"name": "deploy", "value": 0})
+                await call("add_chassis", {"name": "bus", "length": 2000, "width": 1200, "height": 1000, "wall": 10,
+                                           "internal_mass_kg": 800})
+                await call("add_assembly", {"name": "power"})
+                await call("add_assembly", {"name": "wing_a", "parent": "power", "joint_axis": "x", "angle_deg": "=deploy",
+                                            "pivot_y": 600, "angle_min": 0, "angle_max": 90})
+                r = await call("add_radiator_panel", {"name": "wing", "attach_to": "bus", "side": "+y", "length": 3000, "width": 1500,
+                                                      "thickness": 40, "material": "aluminum_honeycomb", "role": "solar",
+                                                      "assembly": "wing_a"})
+                assert not r.isError and json.loads(_text(r))["assembly"] == "power/wing_a"
+                tree = json.loads(_text(await call("list_assemblies", {})))
+                assert tree["assemblies"][0]["children"][0]["name"] == "wing_a" and tree["ungrouped"] == ["bus"]
+                joints = _items(await call("list_joints", {}))
+                assert joints[0]["variable"] == "deploy" and joints[0]["parts"] == ["wing"]
+
+                # detail features through the connector
+                await call("add_box", {"name": "plate", "length": 100, "width": 100, "height": 20, "x": 4000})
+                assert not (await call("add_hole", {"name": "h", "target": "plate", "side": "+z", "standard": "M6",
+                                                    "hole_type": "counterbore", "circle_count": 4, "circle_diameter": 50})).isError
+                assert not (await call("add_fastener", {"name": "screw", "size": "M6", "length": 20, "x": 4025, "z": 3.5})).isError
+                assert not (await call("add_sweep", {"name": "pipe", "path": [[5000, 0, 0], [5300, 0, 0], [5300, 300, 0]],
+                                                     "radius": 10, "bend_radius": 60})).isError
+                assert not (await call("add_loft", {"name": "adapter", "sections": [["rect", 0, 200, 200], ["circle", 300, 80]],
+                                                    "x": 6000})).isError
+                bad = await call("add_sweep", {"name": "p2", "path": [[0, 0, 0], [100, 0, 0], [100, 100, 0]], "radius": 5})
+                assert bad.isError and "bend_radius" in _text(bad)
+                for n in ("h", "screw", "pipe", "adapter", "plate"):                          # leave a plain bus and wing for the analysis
+                    assert not (await call("remove_part", {"name": n})).isError
+
+                modal = json.loads(_text(await call("analyze_modal", {"n_modes": 4, "fixed_part": "bus", "fixed_side": "-z",
+                                                                      "mesh_size": 300})))
+                assert len(modal["frequencies_hz"]) == 4 and modal["frequencies_hz"] == sorted(modal["frequencies_hz"])
+                assert Path(modal["mode_shape_viewer"]).exists() and "BETA" in modal["note"]
+                assert modal["model"]["mass_kg"] == pytest.approx(modal["model"]["cad_mass_kg"], rel=0.01)
+                stat = json.loads(_text(await call("analyze_static", {"accel_z_g": 5, "fixed_part": "bus", "fixed_side": "-z",
+                                                                      "constraint": "face", "mesh_size": 300})))
+                assert stat["reaction_force_n"][2] == pytest.approx(stat["model"]["cad_mass_kg"] * 5 * 9.80665, rel=0.01)
+                assert stat["worst_plate"] and "BETA" in stat["note"]
+                free = json.loads(_text(await call("analyze_modal", {"n_modes": 2, "mesh_size": 400, "show_modes": False})))
+                assert free["rigid_body_modes_removed"] == 6 and "mode_shape_viewer" not in free
+                no_support = await call("analyze_static", {"accel_z_g": 1})
+                assert no_support.isError and "needs a support" in _text(no_support)
+                half = await call("analyze_modal", {"fixed_part": "bus"})
+                assert half.isError and "both fixed_part and fixed_side" in _text(half)
 
     _run(scenario())

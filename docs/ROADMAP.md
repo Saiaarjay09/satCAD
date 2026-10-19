@@ -17,6 +17,8 @@ verified analysis (structures, thermal, dynamics), requirements traceability and
 
 ## 2. Where SatCAD is today
 
+A line-by-line comparison with NX's publicly described capabilities is in **[NX_BENCHMARK.md](NX_BENCHMARK.md)**. The summary table:
+
 Legend: **yes** = implemented and tested, **partial** = works for simple cases, **no** = not there.
 
 | Capability (as commonly found in professional CAD) | SatCAD | Notes |
@@ -25,21 +27,22 @@ Legend: **yes** = implemented and tested, **partial** = works for simple cases, 
 | Parametric feature history that rebuilds | **yes** | Every part is a recipe; edits rebuild dependants |
 | Named variables and formulas ("expressions") | **yes** | `set_variable`, formulas such as `=(wingspan - chassis.width)/2`, references to other parts' size and position |
 | Primitive solids, extrude, revolve | **yes** | box, cylinder, sphere, rect/circle/polygon extrusions (hollow tubes, taper), revolves |
-| Fillets / chamfers | **partial** | On boxes and the chassis; not yet on arbitrary edges |
-| Holes, pockets (cuts) | **yes** | Round and rectangular, through or to a depth, follow their part |
+| Fillets / chamfers | **partial** | On boxes and the chassis, and on chosen edge groups of any part (`fillet_edges`); fixed radius only |
+| Holes, pockets (cuts) | **yes** | Round and rectangular cuts; ISO clearance, tapped, counterbore and countersink holes M3-M12 with patterns; cosmetic threads |
 | Patterns and mirrors | **yes** | Linear, circular, mirror; follow their source |
 | Sketcher with geometric/dimensional constraints | **no** | Profiles are explicit point lists, not constraint-solved sketches |
-| Free-form surfacing, lofts, sweeps | **no** | |
+| Lofts, sweeps, shell | **partial** | Sweep along bent paths, loft between sections, shell with open faces. No free-form surfacing |
 | Sheet metal, weldments, composites layup | **no** | Panels are simple slabs |
-| Assemblies with mating constraints / sub-assemblies | **partial** | Parts attach to faces and follow; no general mates, no hierarchy |
+| Assemblies with mating constraints / sub-assemblies | **partial** | Nested sub-assemblies with rolled-up mass properties; hinge joints with limits and viewer sliders. No general mates or kinematic solver |
 | Mass, centre of mass, **full inertia tensor** | **yes** | From real solids; verified against closed-form formulas (boxes, shells, spheres, cylinders, parallel-axis) |
-| Interference (overlap) and floating-part checks | **yes** | Pairwise solid intersection |
-| Bill of materials | **yes** | CSV |
+| Interference (overlap) and floating-part checks | **yes** | Pairwise solid intersection; screws in tapped holes are reported as thread engagement, not overlap |
+| Bill of materials | **yes** | CSV, with assembly column |
+| Materials with structural properties | **partial** | 10 materials: density, E, nu, yield, CTE, conductivity. Typical values only, not allowables |
 | STEP / STL / GLB export | **yes** | STEP carries part names and colours. Metadata such as PMI is not written |
 | STEP import (use vendor/other-CAD parts) | **no** | |
 | Interactive 3D viewer | **yes** | Browser-based: orbit, pick, hide, explode, centre of mass |
 | 2D engineering drawings (dimensions, tolerances, PMI) | **no** | |
-| Structural analysis (FEA: stress, modal/vibration) | **no** | Essential before launch; see roadmap |
+| Structural analysis (FEA: stress, modal/vibration) | **beta** | Own shell solver: g-load/pressure statics with stress and margin of safety, and modal analysis with animated mode shapes. Flat plates only; validated against plate theory. Not a substitute for a certified solver |
 | Thermal network / environment analysis | **no** | `size_radiator` is a first-order estimate only |
 | Orbit, attitude, eclipse, link-budget analysis | **no** | The separate Orbital-Datacentre repo has an optical-link simulator |
 | Product-data management, revision control, approvals | **no** | Designs are JSON recipes, so `git` gives basic revision history |
@@ -50,23 +53,24 @@ Legend: **yes** = implemented and tested, **partial** = works for simple cases, 
 1. **Right geometry and mass properties**: centre of mass and inertia drive attitude control. SatCAD now computes these from real solids and the tests
    check them against textbook formulas. Remaining weakness: equipment is modelled as idealised blocks with assumed density.
 2. **Verified analysis**: launch-load stiffness (first natural frequency must clear the launch vehicle's requirement), stress margins, thermal
-   cases (hot, cold, eclipse), pointing stability. None of this exists in SatCAD yet.
+   cases (hot, cold, eclipse), pointing stability. SatCAD has a BETA structural solver for flat-plate structures; thermal and pointing analysis do not exist yet.
 3. **Requirements and traceability**: every number traced to a requirement and a source.
 4. **Independent review**: a second tool and a second engineer. Treat SatCAD results as concept-stage until cross-checked.
 
 ## 4. Proposed roadmap (each step shippable on its own)
 
 **Phase A: finish a strong concept-design tool** (SatCAD only)
-- Sketcher with dimensional/geometric constraints and a constraint solver
-- Fillet/chamfer on selected edges; shell, draft; sweep and loft
-- Sub-assemblies with named mates; exploded-view states; STEP import of off-the-shelf parts
-- STEP AP242 export with materials and assembly structure
+- Sketcher with dimensional/geometric constraints and a constraint solver (the largest remaining modelling gap)
+- Variable-radius fillets, draft, guide curves for sweeps and lofts
+- Named mates and a kinematic solver (hinges, sliders) beyond today's revolute joints
+- STEP import of off-the-shelf parts; STEP AP242 export with materials and assembly structure
 - 2D drawings with dimensions
-- A materials library with verified properties and citations (and temperature dependence)
+- Materials with certified allowables, citations and temperature dependence
+- *Done so far:* shell, sweep, loft, edge fillets, ISO holes and fasteners, assemblies with hinges, materials with structural properties
 
 **Phase B: analysis by integrating proven open-source solvers** (do not reinvent them)
-- Meshing with **Gmsh** and structural FEA with **CalculiX**: static load cases and **modal analysis** (first natural frequencies)
-  for launch compatibility. Validate against NAFEMS benchmarks and hand calculations before trusting.
+- *Started:* a built-in shell finite-element solver (flat plates) for static and modal analysis, verified against textbook solutions (BETA).
+- Next: solid and beam elements; meshing with **Gmsh** and structural FEA with **CalculiX**, validated against NAFEMS benchmarks and hand calculations before trusting. Buckling, random vibration and contact.
 - Thermal: a lumped-parameter network with orbital heating (solar, albedo, Earth IR) and eclipse, validated against textbook cases.
 - Orbit and attitude: use an established astrodynamics library (for example Orekit, poliastro/hapsira or SPICE) for eclipse timing, beta angle,
   ground tracks, torques; connect to the existing optical-link simulator for link-availability studies.

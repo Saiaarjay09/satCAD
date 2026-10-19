@@ -1,8 +1,8 @@
 # SatCAD: open-source spacecraft CAD you can talk to
 
 SatCAD lets you describe a spacecraft in plain English and have **Claude** build it as a real 3D model,
-draw it, weigh it (including its full **inertia tensor**), check it for mistakes, show it in an interactive 3D viewer
-and export it as a CAD file. Every dimension can be a named variable or a formula, so changing one number rebuilds the
+draw it, weigh it (including its full **inertia tensor**), check it for mistakes, show it in an interactive 3D viewer,
+run a first-order **vibration and stress analysis** on it, and export it as a CAD file. Every dimension can be a named variable or a formula, so changing one number rebuilds the
 whole design. You do not need any CAD experience. It can also be used as an ordinary Python library, or through ready-made
 example scripts.
 
@@ -20,7 +20,8 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 > **How capable is it, honestly?** SatCAD is a **concept-design and trade-study tool** with an exact solid-modelling
 > kernel, parametric feature history, formulas, real mass properties, and verified physics for what it computes. It is **not** a
 > replacement for professional CAD plus certified structural, thermal and orbital analysis, and it should not be the sole basis
-> for flight hardware. What it does and does not cover, and the plan to close the gap, is in
+> for flight hardware. What it does and does not cover, measured line by line against Siemens NX's publicly described
+> capabilities, is in **[docs/NX_BENCHMARK.md](docs/NX_BENCHMARK.md)**; the plan to close the gap is in
 > **[docs/ROADMAP.md](docs/ROADMAP.md)**.
 
 ---
@@ -30,7 +31,8 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 1. [What you can do with it](#1-what-you-can-do-with-it)
 2. [Install](#2-install)
 3. [Use it](#3-use-it), including [building the orbital AI datacentre](#3f-build-the-orbital-ai-datacentre-build_satellitepy)
-   and [variables and formulas](#3g-variables-and-formulas-nx-style-expressions)
+   [variables and formulas](#3g-variables-and-formulas-nx-style-expressions), and
+   [assemblies, hardware and structural analysis](#3h-assemblies-hinges-hardware-and-structural-analysis)
 4. [Five ideas that make CAD easy](#4-five-ideas-that-make-cad-easy)
 5. [What each file does](#5-what-each-file-does)
 6. [Reference: tools Claude can call](#6-reference-tools-claude-can-call)
@@ -51,8 +53,13 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 - **Change one number and everything follows.** Make the housing wider and the attached radiators move out
   with it. This is what "parametric" means. Dimensions can be **named variables and formulas**
   (`=(wingspan - chassis.width) / 2`), like NX expressions.
-- **Model real hardware shapes.** Extruded beams and tubes, revolved propellant tanks and nozzles, filleted edges, holes and
-  pockets, linear and circular patterns, mirror copies.
+- **Model real hardware shapes.** Extruded beams and tubes, revolved propellant tanks and nozzles, swept and bent pipes, lofted
+  adapters, hollowed-out (shelled) housings, filleted edges, ISO clearance / tapped / counterbored holes, socket-head screws,
+  linear and circular patterns, mirror copies.
+- **Organise it like a real product.** Nested **assemblies** with rolled-up mass and inertia, and **hinges** that stow and deploy
+  panels (drag a slider in the viewer).
+- **Analyse it.** A built-in shell finite-element solver (**BETA**) finds the **vibration modes** (animated in the browser) and
+  **stress under g-loads**, with margins of safety.
 - **See what you built.** An **interactive 3D viewer** (orbit, zoom, click parts for mass and material, hide parts, explode
   the assembly, centre of mass) plus four-view pictures after every change.
 - **Catch mistakes.** Total mass, centre of mass and the **full inertia tensor** (what attitude control needs), overlapping
@@ -60,7 +67,7 @@ from, and not affiliated with, Siemens NX. Files it exports (STEP) are a standar
 - **Hand it on.** Export **STEP** (opens in most CAD programs, including Siemens NX), **STL** (3D printing,
   mesh viewers) or **GLB** (web and AR viewers).
 - **Build the full orbital AI datacentre in one command** (`python build_satellite.py`): chassis with compute
-  blades, radiators, laser transceivers and solar arrays, all driven by variables at the top of one file.
+  blades, hinged radiators, bolted laser terminals and hinged solar arrays, all driven by variables at the top of one file.
 - **Run trade studies.** Because designs are saved as small JSON recipes, you can version them in git and
   compare variants.
 
@@ -84,7 +91,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`158 passed` and the path of the connector.
+`272 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -188,14 +195,15 @@ into the open-source kernel and checking the volume matches.
 
 ### 3f. Build the orbital AI datacentre (`build_satellite.py`)
 
-`build_satellite.py` uses SatCAD to design a complete space-based AI compute node with four subsystems:
+`build_satellite.py` uses SatCAD to design a complete space-based AI compute node with four subsystems, each its own **assembly**
+(39 parts in all):
 
 | # | Subsystem | What it is in the model |
 |---|---|---|
 | 1 | **Central datacentre chassis** | A large hollow aluminium box (6 x 2.4 x 2.4 m, rounded edges, optical feed-through holes) holding a row of 12 upright **compute blades**, plus the mass of the pumps and coolant |
-| 2 | **Thermal radiators** | Two flat panels reaching out of the left and right sides, 22 m tip to tip: about **8 times the chassis's top-down footprint** |
-| 3 | **Optical inter-satellite links (OISL)** | Two cylindrical laser transceivers, one on the front and one on the rear, each a gimbal housing (for the Fast Steering Mirror) plus a telescope barrel |
-| 4 | **Solar arrays** | Two flat wings on the top and bottom faces, in a plane **perpendicular to the radiators**, with their big faces toward the sun |
+| 2 | **Thermal radiators** | Two flat panels reaching out of the left and right sides, 22 m tip to tip: about **8 times the chassis's top-down footprint**. Each is on a **hinge**, so it can be stowed against the chassis |
+| 3 | **Optical inter-satellite links (OISL)** | Two laser terminals, front and rear. Each is a mounting flange **bolted to the chassis with 8 x M6 socket-head screws into tapped holes**, a gimbal housing (for the Fast Steering Mirror) and a telescope barrel |
+| 4 | **Solar arrays** | Two flat wings on the top and bottom faces, in a plane **perpendicular to the radiators**, with their big faces toward the sun. Each is on a **hinge** |
 
 ![The whole satellite in four views](docs/orbital_datacentre.png)
 
@@ -214,13 +222,15 @@ Or in one line without activating the environment:
 .venv/bin/python build_satellite.py --view
 ```
 
-It takes a few seconds. `--view` opens the **interactive 3D viewer** in your browser when done; leave it off to just write the files.
+It takes about ten seconds. `--view` opens the **interactive 3D viewer** in your browser when done; leave it off to just write the files.
+Add `--no-modes` to skip the vibration analysis.
 
 **What you get**, in `output/orbital_datacentre/`:
 
 | File | What it is |
 |---|---|
-| `orbital_datacentre_viewer.html` | **Interactive 3D model.** Orbit, zoom, click parts for mass and material, hide parts (try hiding the chassis to see the blades), explode, centre of mass, save PNG. Needs internet on first open |
+| `orbital_datacentre_viewer.html` | **Interactive 3D model.** Orbit, zoom, an assembly tree with rolled-up masses, **hinge sliders** (fold and unfold the radiators and solar wings), click parts for mass and material, hide parts (try hiding the chassis to see the blades), explode, centre of mass, save PNG. Needs internet on first open |
+| `orbital_datacentre_modes.html` | **Animated vibration mode shapes** of the whole satellite, coloured by displacement, with each mode's frequency and effective mass (BETA analysis, see 3h) |
 | `orbital_datacentre.png` | The whole satellite in four views (isometric, top, front, side) |
 | `orbital_datacentre_core_detail.png` | A cut-away of the compute blades and laser terminals, with the chassis shell hidden |
 | `orbital_datacentre.step` | The 3D model as a CAD file. Import it into Siemens NX, Fusion 360, SolidWorks or FreeCAD |
@@ -242,12 +252,16 @@ very top. Edit one, save, and run it again. Everything is in millimetres.
 | `RADIATOR_WINGSPAN` | 22000 | **Tip-to-tip** span across both panels and the chassis |
 | `RADIATOR_CHORD` | 6000 | How wide each radiator panel is, along the satellite's length |
 | `RADIATOR_THICKNESS` | 40 | Radiator panel thickness |
-| `RADIATOR_TILT_DEG` | 0 | Hinge both panels up (+) or down (-) as a symmetric V |
+| `RADIATOR_TILT_DEG` | 0 | Fixed tilt of both panels up (+) or down (-) as a symmetric V |
+| `RADIATOR_DEPLOY_ANGLE_DEG` | 0 | **Hinge angle**: 0 = deployed flat, up to 90 = swung up against the chassis |
 | `TRANSCEIVER_RADIUS` | 250 | Radius of each laser telescope barrel |
 | `TRANSCEIVER_LENGTH` | 800 | Length of each telescope barrel |
 | `GIMBAL_RADIUS_FACTOR`, `GIMBAL_LENGTH` | 1.4, 300 | Gimbal housing size, as a multiple of the telescope radius, and its length |
 | `OISL_PORT_FACTOR` | 0.8 | Optical feed-through hole cut in the chassis wall under each terminal, as a multiple of the telescope diameter |
+| `FLANGE_THICKNESS`, `FLANGE_RADIUS_FACTOR` | 20, 1.15 | Mounting flange thickness, and its outer radius as a multiple of the gimbal radius (the bolts sit in the ring this leaves) |
+| `OISL_BOLT_COUNT` | 8 | M6 screws per terminal on a bolt circle (3 to 64, or 0 for none) |
 | `SOLAR_WING_LENGTH` / `_WIDTH` / `_THICKNESS` | 14000 / 12000 / 40 | Size of each solar wing |
+| `SOLAR_DEPLOY_ANGLE_DEG` | 0 | **Hinge angle** of the solar wings: 0 = deployed, up to 90 = folded over |
 | `RADIATOR_TEMP_K`, `RADIATOR_EMISSIVITY`, `SOLAR_CELL_EFFICIENCY`, `SOLAR_PACKING_FACTOR`, `SOLAR_END_OF_LIFE_FACTOR` | 330, 0.85, 0.30, 0.90, 0.85 | Operating assumptions used only for the report, not for the shapes |
 
 **Or change a size without editing the file** with `--set` (repeat it for several), and give the result its own name
@@ -267,13 +281,26 @@ mirror of the left, the rear laser terminal a mirror of the front, and the compu
 symmetry. After loading the `.json` into the Claude connector, `set_variable("radiator_wingspan", 30000)` rebuilds the
 whole satellite.
 
-**Read the design report.** After building, the script prints the total mass, the mass by role, the **centre of mass and
+**Stow and deploy.** The deploy angles move real hinges, and mass properties, overlap checks and the vibration analysis all use the
+new pose:
+
+```bash
+python build_satellite.py --set RADIATOR_DEPLOY_ANGLE_DEG=90 --name radiators_stowed
+python build_satellite.py --set SOLAR_DEPLOY_ANGLE_DEG=90 --name wings_folded
+```
+
+Folding the radiators alone, or the solar wings alone, gives a clean design. Folding **both** to 90 degrees makes the top solar wing
+lie across the standing left radiator, and the report lists that overlap: the checker is telling you the stowed arrangement needs
+more thought (for example folding the wings the other way), exactly as an interference check should.
+
+**Read the design report.** After building, the script prints the total mass, the mass by role and by subsystem, the **centre of mass and
 inertia tensor**, the **radiator area
 compared with the chassis**, how much heat the radiators can reject at the chosen temperature, how much electrical
 power the solar wings make, and a **heat balance**: all electrical power ends up as heat, so the radiators must be
 able to reject at least as much as the arrays generate. If they cannot, it prints a warning. If you shrink the radiators
 or enlarge the solar wings and see that warning, the design no longer closes thermally. It also lists any overlapping
-or floating parts. The radiator and solar numbers are rough estimates (see [Limits](#12-limits)).
+or floating parts, the screws seated in tapped holes, and the first vibration modes. The radiator and solar numbers are rough
+estimates (see [Limits](#12-limits)).
 
 **Link to the optical-link simulator.** `TRANSCEIVER_RADIUS` is the barrel radius; the usable optical aperture is a bit
 smaller. It corresponds to the `--tx-aperture-m` / `--rx-aperture-m` settings in the
@@ -330,6 +357,47 @@ Rules that keep it safe and predictable:
 - Formulas are evaluated by a small safe interpreter: they can never run arbitrary code.
 - Formulas are saved in the design file, so a saved design stays parametric when you reload it.
 
+### 3h. Assemblies, hinges, hardware and structural analysis
+
+These are the "detail design" features. They are used by `build_satellite.py` and are also available to Claude as tools (section 6).
+
+**Assemblies and hinges.** `add_assembly` makes a named group. Parts join one with their `assembly` setting; assemblies nest. The viewer
+shows the tree with each group's mass, and `list_assemblies` returns mass, centre of mass and principal inertias for every level. Give an
+assembly a `joint_axis` (`x`, `y` or `z`), a `pivot_*` point and an `angle_deg` (a number or a formula such as `=solar_deploy_angle_deg`)
+and it becomes a hinge: its parts, and anything attached to them, swing about that pin. `angle_min` / `angle_max` limit the range, and
+`list_joints` reports each pivot and axis in world space. Place the pin on the face of the panel that it swings toward, otherwise the
+folded panel swings through the wall it is hinged to.
+
+**Holes and screws.** `add_hole` takes a size (`M3` to `M12`) and a type (`clearance`, `tapped`, `counterbore`, `countersink`) and looks the
+diameters up in standard tables (ISO 273 clearance, tap drills, DIN 974-1 counterbores), with optional grids and bolt circles.
+`add_fastener` places an ISO 4762 socket-head screw. Threads are **cosmetic**: a tapped hole is drilled at the tap-drill size and the
+screw shank is its nominal size, so the screw overlaps the hole wall slightly. `check_design` recognises that and reports it as *thread
+engagement* (expected) rather than an overlap error.
+
+**Other shapes.** `add_shell` hollows a solid and leaves chosen faces open. `add_sweep` pulls a profile along a polyline with tangent-arc
+bends (pipes, harnesses). `add_loft` blends between sections (adapters, fairings). `add_fillet_edges` rounds or bevels chosen edge groups.
+
+**Structural analysis (BETA).** `analyze_modal` finds the vibration modes (natural frequencies, effective modal mass, animated shapes
+in `<design>_modes.html`). `analyze_static` applies g-loads (and, from Python, pressures) and reports displacement, von Mises stress and the
+margin of safety on each plate, plus the support reaction. Supports are set with `fixed_part` and `fixed_side`.
+
+The solver models the structure as **flat shell plates** (membrane plus bending with shear, triangles, with exact ties where parts touch), with
+equipment as lumped mass. It has been checked against closed-form results: uniaxial stress, simply-supported and clamped plate
+deflection, thick-plate shear, plate natural frequencies (Leissa's tables), the free-plate six rigid-body modes, force equilibrium
+(reaction = mass x acceleration) and mass agreement with the CAD model (see `tests/test_fem.py`, `tests/test_fem_design.py`). Its limits
+matter, so every result prints them:
+
+- Linear only: no large deflection, buckling, contact, or material yield. A 14 m honeycomb wing under 6 g "deflects" metres in this
+  linear model; that is the model telling you the wing cannot take that load unfolded, not a prediction of the shape.
+- Flat rectangular plates and the six chassis walls only. Rounded edges are ignored; non-rectangular slabs (a flange ring) become a
+  rectangle with reduced density.
+- Sandwich and composite panels are idealised as one isotropic material (the caveat is printed).
+- Parts must touch the supported structure; loose pieces are reported (and a static solve refuses them).
+- For **launch**, analyse the *stowed* design (set the deploy angles) with the adapter fixed. The deployed free-free modes (0.2 to 0.7 Hz
+  for the datacentre) describe the satellite in orbit.
+
+Treat the numbers as concept-stage and cross-check any you rely on with a certified solver.
+
 ## 4. Five ideas that make CAD easy
 
 1. **Part.** One solid object: the chassis, a radiator panel.
@@ -359,7 +427,7 @@ Open-source-CAD-software/
 ├── setup.sh                  one-time installer: environment + libraries + tests (+ optional Claude registration)
 ├── build_satellite.py        THE ORBITAL DATACENTRE: builds the whole satellite from variables at its top
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
-├── requirements.txt          the Python libraries needed (build123d, mcp, matplotlib, numpy, pytest)
+├── requirements.txt          the Python libraries needed (build123d, mcp, matplotlib, numpy, scipy, pytest)
 ├── pytest.ini                test settings
 ├── .gitignore                keeps .venv/, cad_output/ and example output out of git
 │
@@ -370,16 +438,19 @@ Open-source-CAD-software/
 │   │                         types, mass properties and inertia, BOM, overlap checks, export, save/load).
 │   │                         No Claude code in here.
 │   ├── expressions.py        the safe formula interpreter behind variables and "=formulas"
-│   ├── viewer.py             writes the interactive 3D viewer (one self-contained .html file)
-│   ├── materials.py          materials table (density, colour, note) and role colours
+│   ├── viewer.py             writes the interactive 3D viewer (assembly tree, hinge sliders) and the animated mode-shape viewer
+│   ├── fem.py                the shell finite-element solver (BETA): modal and static analysis of flat-plate structures
+│   ├── hardware.py           ISO metric tables: clearance holes, tap drills, counterbores, socket-head screw dimensions
+│   ├── materials.py          materials table (density, stiffness, strength, thermal data, colour, caveats) and role colours
 │   ├── thermal.py            size_radiator(): radiator area needed for a heat load
 │   ├── power.py              size_solar_array(): solar array area needed for a power load
 │   ├── render.py             draws the four-view PNG picture
-│   └── server.py             THE CONNECTOR: wraps the engine as 31 MCP tools Claude can call
+│   └── server.py             THE CONNECTOR: wraps the engine as 42 MCP tools Claude can call
 │
 ├── examples/
 │   ├── hello_satellite.py    chassis + two radiators; the numbers to change are at the top
-│   └── datacentre_v0.py      a 100 kW orbital datacentre sketch sized from its power budget
+│   ├── datacentre_v0.py      a 100 kW orbital datacentre sketch sized from its power budget
+│   └── avionics_box.py       a machined avionics enclosure: shell, ISO holes, socket-head screws, a bent coolant pipe
 │
 ├── tests/
 │   ├── test_engine.py        engine, panels, tilt, file-format tests (checked against hand calculations)
@@ -387,10 +458,16 @@ Open-source-CAD-software/
 │   ├── test_expressions.py   variables and formulas: precedence, degrees, safety, cycles, rollback
 │   ├── test_features.py      extrude, revolve, fillet, cutout, pattern, mirror, and a mixed spacecraft bus
 │   ├── test_viewer.py        the 3D viewer data and its protection against script injection
+│   ├── test_assemblies.py    sub-assemblies, hinges, roll-up mass properties, articulated poses
+│   ├── test_detail_features.py  shell, sweep, loft, edge fillets, ISO holes, screws, thread engagement
+│   ├── test_materials.py     the materials database
+│   ├── test_fem.py           the FE solver against closed-form plate, membrane and vibration solutions
+│   ├── test_fem_design.py    CAD design to FE model: ties, supports, mass match, loose parts, reactions
 │   ├── test_server.py        launches the real server and talks to it like Claude does
-│   └── test_build_satellite.py  checks the satellite: radiators flat and symmetric, solar wings perpendicular, lasers front and rear, validation, command line
+│   └── test_build_satellite.py  checks the satellite: subsystems, hinges and stowing, bolted optics, validation, analysis, command line
 │
 └── docs/
+    ├── NX_BENCHMARK.md                   line-by-line scoreboard against Siemens NX's publicly described capabilities
     ├── ROADMAP.md                        what SatCAD covers today vs professional CAD, and the plan to close the gap
     ├── example_orbital_node.png          the picture at the top of this README
     ├── orbital_datacentre.png            whole-satellite picture used in section 3f
@@ -404,6 +481,8 @@ Open-source-CAD-software/
 | change the orbital datacentre's dimensions | the numbers at the top of `build_satellite.py`, or `--set NAME=VALUE` on the command line |
 | change any other satellite's dimensions | nothing: ask Claude, or edit the numbers at the top of an `examples/` script |
 | add a material | `satcad/materials.py` |
+| add a screw or hole size | `satcad/hardware.py` |
+| change the structural solver | `satcad/fem.py` (and add a closed-form check to `tests/test_fem.py`) |
 | add a new kind of part (e.g. a truss or a dish) | `satcad/engine.py` (see [Extending it](#9-extending-it)), then `satcad/server.py` |
 | change how the picture looks | `satcad/render.py` (PNG) or `satcad/viewer.py` (interactive 3D) |
 | add a formula function | `satcad/expressions.py` |
@@ -441,7 +520,18 @@ All sizes are in **mm**, masses in **kg**. Settings marked `?` are optional.
 | `open_3d_viewer` | Write and open the interactive 3D viewer. | `open_in_browser?` |
 | `size_radiator` | Radiator area for a heat load (Stefan-Boltzmann). | `heat_load_w, panel_temp_k?, emissivity?, sides?, sink_temp_k?, panel_count?, aspect_length_over_width?` |
 | `size_solar_array` | Solar-cell area for an electrical load. | `power_w, cell_efficiency?, packing_factor?, end_of_life_factor?, sun_angle_deg?, panel_count?, aspect_length_over_width?` |
-| `list_materials` | Available materials with density and notes. | none |
+| `add_assembly` | A named group of parts. With `joint_axis` it becomes a hinge (stow / deploy). | `name, parent?, x?, y?, z?, rx?, ry?, rz?, joint_axis?, angle_deg?, pivot_x?, pivot_y?, pivot_z?, angle_min?, angle_max?` |
+| `list_assemblies` | The product tree with rolled-up mass, centre of mass and principal inertias. | none |
+| `list_joints` | Each hinge: world pivot and axis, current angle and range, parts moved. | none |
+| `add_shell` | Hollow out a solid, leaving chosen faces open. | `name, target, open_faces, thickness, direction?` |
+| `add_sweep` | Pull a circle or rectangle along a path with tangent bends: pipes, harnesses. | `name, path, profile?, radius?, width?, height?, wall?, bend_radius?, x?, y?, z?, material?, role?, assembly?` |
+| `add_loft` | Blend between sections (circle or rectangle) at different heights: adapters, fairings. | `name, sections, plane?, x?, y?, z?, material?, role?, assembly?` |
+| `add_fillet_edges` | Round or bevel chosen edges of a part (`all`, `parallel:z`, `face:+z`...). | `name, target, edges, radius?, chamfer?` |
+| `add_hole` | Standard ISO hole (M3 to M12): clearance, tapped, counterbore or countersink, in grids or bolt circles. | `name, target, side, standard, hole_type?, depth?, offset_u?, offset_v?, count_u?, pitch_u?, count_v?, pitch_v?, circle_count?, circle_diameter?, circle_start_deg?` |
+| `add_fastener` | An ISO 4762 socket-head screw. | `name, size, length, axis?, x?, y?, z?, material?, assembly?` |
+| `analyze_modal` | **BETA.** Vibration modes with effective modal mass; writes an animated viewer. | `n_modes?, fixed_part?, fixed_side?, constraint?, mesh_size?, show_modes?` |
+| `analyze_static` | **BETA.** g-load stress analysis: displacement, von Mises stress, margins of safety, reactions. | `accel_x_g?, accel_y_g?, accel_z_g?, fixed_part?, fixed_side?, constraint?, mesh_size?, safety_factor?` |
+| `list_materials` | Materials with density, stiffness, strength, expansion, conductivity, and caveats. | none |
 | `export_design` | Write STEP / STL / GLB files. | `basename?, formats?` |
 | `export_bom` | Write a bill of materials CSV. | `filename?` |
 | `save_design` / `load_design` | Save or reload the editable recipe (with its variables and formulas) by name. | `filename?` / `filename` |
@@ -475,6 +565,13 @@ Parts that are not attached to something also take a **pose**: `x, y, z` (centre
 | `revolve` | `points` (outline as `[[radius, height], ...]`, closed automatically), `angle` (360), `axis` (`z`; `x`, `y` also allowed) |
 | `cutout` | `target` (part to cut), `side` (face), `shape` (`circle` or `rect`), `diameter` or `width` + `height`, `depth` (0 = all the way through), `offset_u`, `offset_v` (slide along the face: for an x-face u=y v=z, y-face u=z v=x, z-face u=x v=y). Creates no part of its own; it changes `target` |
 | `pattern` | `source`, `mode` (`linear` or `circular`), `count` (2 to 500, including the original), `dx dy dz` (linear spacing), `axis` + `cx cy cz` (circular: axis direction and a point on it), `total_angle` (360). Copies are named `<pattern>_2`, `<pattern>_3`, ... |
+| `assembly` | `parent`, a pose (`x y z rx ry rz`), and optional hinge settings `joint_axis`, `angle_deg`, `pivot_x pivot_y pivot_z`, `angle_min`, `angle_max`. Creates no solid; parts join it through their own `assembly` setting |
+| `shell` | `target`, `open_faces` (list of `+x -x +y -y +z -z`), `thickness`, `direction` (`inward` or `outward`). Changes `target` |
+| `sweep` | `path` (points, mm), `profile` (`circle` or `rect`), `radius` or `width` + `height`, `wall` (0 = solid), `bend_radius` (0 = straight, needed for any bend; must fit the corner) |
+| `loft` | `sections` (`[["circle", position, radius], ["rect", position, width, height], ...]`, at least two), `plane` |
+| `fillet_edges` | `target`, `edges` (`all`, `parallel:x/y/z`, `face:+x ...`), `radius` or `chamfer`. Changes `target` |
+| `hole` | `target`, `side`, `standard` (`M3` ... `M12`), `hole_type` (`clearance`, `tapped`, `counterbore`, `countersink`), `depth` (0 = through), grid (`count_u pitch_u count_v pitch_v`) or bolt circle (`circle_count circle_diameter circle_start_deg`). Changes `target` |
+| `fastener` | `size`, `length`, `axis`, a position; material defaults to `stainless_316` |
 | `mirror` | `source`, `plane` (`xy` flips Z, `yz` flips X, `zx` flips Y), `offset` (0) |
 
 Cutouts, patterns and mirrors **follow** their target or source: edit the original and they update.
@@ -482,15 +579,18 @@ Cutouts, patterns and mirrors **follow** their target or source: edit the origin
 `edit_part` also accepts `offset_along_width` and `offset_along_thickness` as aliases for
 `offset_span` and `offset_thin`.
 
-**Materials** (density, kg/m³): `aluminum_6061` 2700, `aluminum_honeycomb` 100 (a rough *effective* value for a
-sandwich panel), `titanium_ti6al4v` 4430, `stainless_316` 8000, `cfrp` 1600, `copper` 8960,
-`generic_equipment` 1500.
+Every part also accepts `assembly` (the group it belongs to).
+
+**Materials** (density kg/m³): `aluminum_6061` 2700, `aluminum_7075` 2810, `aluminum_honeycomb` 100 (a rough *effective* value for a
+sandwich panel), `titanium_ti6al4v` 4430, `stainless_316` 8000, `inconel_718` 8190, `invar_36` 8050, `cfrp` 1600 (approximated as
+isotropic), `copper` 8960, `generic_equipment` 1500 (mass only, not load-bearing). `list_materials` also gives stiffness, strength,
+expansion and conductivity. These are typical room-temperature values, not design allowables.
 
 ## 8. How it works
 
 ```
  You  ──►  Claude  ──(MCP, over stdin/stdout)──►  server.py  ──►  engine.py  ──►  build123d / OpenCascade
- words      picks a tool                          31 tools        recipes →        solids, booleans,
+ words      picks a tool                          42 tools        recipes →        solids, booleans,
                                                   + autosave      geometry         STEP/STL/GLB export
                                                        │
                                                        ├──►  render.py → PNG picture back to Claude
@@ -508,6 +608,10 @@ sandwich panel), `titanium_ti6al4v` 4430, `stainless_316` 8000, `cfrp` 1600, `co
   inertia about its own centre; the design's centre of mass and **inertia tensor** are the sums of those, shifted with the
   parallel-axis theorem. Principal moments and axes come from an eigen-decomposition. The tests check this against closed-form
   formulas.
+- **Assemblies.** Parts keep their own pose; an assembly adds a placement (and optionally a hinge rotation) on top. Panels attached to a
+  hinged part follow it, receiving only the hinge motion. Mass properties roll up through the tree.
+- **Structural analysis.** `fem.py` turns the design into flat shell plates (the chassis walls, thin slabs) and lumped masses, joins plates
+  that touch with exact constraints, and solves with SciPy sparse linear algebra. See 3h for what it has been verified against.
 - **Overlap check** intersects every pair of parts; overlap volume above 1 mm³ is reported. **Floating**
   means no other part within 0.05 mm.
 - **Autosave.** After every change the server writes `cad_output/designs/current.json` and reloads it on start.
@@ -535,10 +639,13 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-158 tests. They include:
+272 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
+- **Solver verification**: the FE code against Hooke's law, plate deflection and vibration tables, the six rigid-body modes of a free body, and
+  force equilibrium; the satellite's FE mass against its CAD mass.
+- Assemblies and hinges, ISO hole and screw dimensions, thread engagement, shell / sweep / loft validation, and the stow-and-deploy poses.
 - Volumes of extrudes, tubes, revolves, fillets, holes and pockets; pattern and mirror positions.
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
 - Panel placement and tilt on all six faces, parametric rebuilds, error messages, save/load (including older files),
@@ -564,12 +671,15 @@ Read **[docs/ROADMAP.md](docs/ROADMAP.md)** for the full capability map and plan
 
 - **Concept-stage tool.** Good for layout, sizing, mass and inertia budgets, trade studies and driving the design from Claude. Not a
   substitute for professional CAD with certified analysis, and not a sole basis for flight hardware.
-- **Geometry:** boxes, cylinders, spheres, hollow shells, flat panels, extrusions, revolves, holes/pockets, patterns, mirrors.
-  No constraint-based sketcher, free-form surfaces, lofts/sweeps, sheet metal, general assembly mates, STEP import or 2D drawings yet.
+- **Geometry:** boxes, cylinders, spheres, hollow shells, flat panels, extrusions, revolves, sweeps, lofts, shells, edge fillets, ISO holes
+  and screws, patterns, mirrors. No constraint-based sketcher, free-form surfaces, sheet metal, general assembly mates, STEP import or
+  2D drawings yet. Threads are cosmetic.
 - **Masses and inertia** are exact for the modelled shapes, but depend on simple material densities and idealised blocks for equipment.
 - **`size_radiator` is a lower bound.** It ignores sunlight, Earth heat and albedo, and the temperature drop across the panel and its plumbing.
 - **`size_solar_array`** ignores eclipse, batteries and self-shading.
-- **No analysis.** No structural, vibration (launch loads), thermal-network or orbital analysis. These are the next priorities.
+- **Structural analysis is BETA.** Linear, flat-plate shell model only (see 3h). No solids, beams, buckling, contact or yield. There is
+  **no thermal-network or orbital analysis**; those are the next priorities.
+- **Not NX.** Section [docs/NX_BENCHMARK.md](docs/NX_BENCHMARK.md) lists, capability by capability, how far SatCAD is from Siemens NX.
 - **Not tested with Siemens NX** (no licence). STEP files are standard, but import behaviour is up to NX.
 
 ## Licence

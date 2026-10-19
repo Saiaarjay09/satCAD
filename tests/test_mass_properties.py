@@ -138,5 +138,5 @@ def test_bom_totals_match_measured_mass(tmp_path):
     assert sum(r["mass_kg"] for r in rows) == pytest.approx(d.measure()["total_mass_kg"], abs=0.01)
     path = d.export_bom(tmp_path / "bom.csv")
     lines = open(path).read().strip().splitlines()
-    assert lines[0].startswith("part,type,role,material") and lines[-1].startswith("TOTAL")
+    assert lines[0].startswith("part,assembly,type,role,material") and lines[-1].startswith("TOTAL")
     assert len(lines) == 2 + len(rows)
