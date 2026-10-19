@@ -44,13 +44,19 @@ jobs:
           python -m pip install -r requirements.txt -r requirements-gui.txt pyinstaller
 
       - name: Self-test from source
-        run: python main.py --selftest
+        env:
+          SATCAD_SELFTEST_RENDER: ${{ runner.os == 'macOS' && '1' || '0' }}
+        run: |
+          python main.py --selftest > selftest.log 2>&1 || { echo "::error::$(tr '\n' ' ' < selftest.log | cut -c1-1500)"; exit 1; }
+          cat selftest.log
 
       - name: Package the app
         run: python -m PyInstaller --noconfirm satcad_app.spec
 
       - name: Smoke-test the packaged app (macOS)
         if: runner.os == 'macOS'
+        env:
+          SATCAD_SELFTEST_RENDER: "1"
         run: |
           out=$("dist/satCAD.app/Contents/MacOS/satCAD" --selftest 2>&1); code=$?
           echo "$out"
@@ -60,8 +66,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $p = Start-Process "dist\satCAD\satCAD.exe" -ArgumentList "--selftest" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "satCAD.exe --selftest exited with code $($p.ExitCode)" }
+          $p = Start-Process "dist\satCAD\satCAD.exe" -ArgumentList "--selftest" -Wait -PassThru -RedirectStandardOutput selftest_app.log -RedirectStandardError selftest_app.err
+          $log = (Get-Content selftest_app.log, selftest_app.err -ErrorAction SilentlyContinue) -join " "
+          if ($p.ExitCode -ne 0 -or $log -notmatch "SELFTEST OK") { Write-Output "::error::exit $($p.ExitCode): $log"; throw "satCAD.exe --selftest failed" }
+          Write-Output $log
 
       - name: Make the macOS disk image
         if: runner.os == 'macOS'

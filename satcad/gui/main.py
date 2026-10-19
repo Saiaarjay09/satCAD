@@ -19,36 +19,44 @@ def build_demo(session) -> None:
 
 
 def selftest() -> int:
-    """Used by the packaging build to prove a frozen app really works: builds the demo part, tessellates it, and tries one rendered frame.
-    Failing to render a frame is reported but is not an error, because a build machine may have no usable OpenGL."""
+    """Used by the packaging build to prove an installation (or a frozen app) works: builds the demo part, tessellates it, creates the window.
+    Rendering a frame needs a working OpenGL driver, which a build machine may lack (and a failed OpenGL start can end the process), so it is
+    only attempted when SATCAD_SELFTEST_RENDER=1."""
     import os
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    stage = "start"
     try:
+        stage = "imports"
         from PySide6.QtWidgets import QApplication
         from . import theme
         from .session import Session
         from .ui_layout import MainWindow
         from .viewport import Viewport, part_edges, part_polydata
+        print("imports ok", flush=True)
+        stage = "application"
         app = QApplication.instance() or QApplication([])
         theme.apply(app)
+        stage = "demo part"
         session = Session()
         build_demo(session)
         part = next(iter(session.design.parts.values()))
+        stage = "tessellation"
         poly, edges = part_polydata(part), part_edges(part)
         assert poly.GetNumberOfPolys() > 100 and edges.GetNumberOfLines() > 5, "tessellation produced no geometry"
         assert session.design.check()["ok"], "the demo part failed its own checks"
-        print(f"kernel ok: {len(session.design.features)} features, {poly.GetNumberOfPolys()} triangles, {edges.GetNumberOfLines()} edges")
+        print(f"kernel ok: {len(session.design.features)} features, {poly.GetNumberOfPolys()} triangles, {edges.GetNumberOfLines()} edges", flush=True)
+        stage = "window"
         win = MainWindow(session, viewport_factory=Viewport)
         win.show()
-        try:
+        print("window ok", flush=True)
+        if os.environ.get("SATCAD_SELFTEST_RENDER") == "1":
+            stage = "render"
             img = win.viewport.grab_image()
-            print(f"render ok: {img.width()}x{img.height()} frame")
-        except Exception as e:                       # no usable OpenGL on this machine
-            print(f"render skipped: {type(e).__name__}: {e}")
-        print("SELFTEST OK")
+            print(f"render ok: {img.width()}x{img.height()} frame", flush=True)
+        print("SELFTEST OK", flush=True)
         return 0
     except Exception as e:
-        print(f"SELFTEST FAILED: {type(e).__name__}: {e}")
+        print(f"SELFTEST FAILED at {stage}: {type(e).__name__}: {e}", flush=True)
         return 1
 
 
