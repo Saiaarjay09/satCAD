@@ -80,6 +80,9 @@ The line at the very bottom tells you what to do next ("Edit values in the Prope
 | Fit everything | press **F** (or View → Fit) |
 | Isometric view | press **Home** |
 
+On a Mac trackpad two-finger scroll zooms, and a pinch gesture does nothing (it is not wired up). A plain-English walk through every button, and a ten-minute first exercise, is in the
+[README](../README.md#new-to-cad-start-here-moving-around-and-what-every-button-does).
+
 ---
 
 ## 3. Your first part

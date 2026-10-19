@@ -372,6 +372,63 @@ def test_mouse_click_selects_and_middle_drag_rotates(viewport):
     assert np.linalg.norm(np.array(cam.GetPosition()) - before) > 1 and clicks == ["a", None]       # rotated, and a drag is not a click
 
 
+def test_the_mouse_controls_in_the_readme_do_what_it_says(viewport):
+    """README 'New to CAD' section A: rotate, pan and zoom on a trackpad (Option = Alt) and with a right-drag or wheel."""
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QMouseEvent, QWheelEvent
+    d = Design("t")
+    d.add("box", "a", length=100, width=100, height=100)
+    viewport.set_design(d, fit=True)
+    cam = viewport.ren.GetActiveCamera()
+
+    def drag(button, mods, dx=60, dy=0):
+        p0, p1 = QPointF(300, 200), QPointF(300 + dx, 200 + dy)
+        viewport.mousePressEvent(QMouseEvent(QEvent.MouseButtonPress, p0, viewport.mapToGlobal(p0), button, button, mods))
+        viewport.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, p1, viewport.mapToGlobal(p1), Qt.NoButton, button, mods))
+        viewport.mouseReleaseEvent(QMouseEvent(QEvent.MouseButtonRelease, p1, viewport.mapToGlobal(p1), button, Qt.NoButton, mods))
+
+    def state():
+        return np.array(cam.GetPosition()), np.array(cam.GetFocalPoint())
+
+    pos0, focal0 = state()
+    drag(Qt.LeftButton, Qt.AltModifier)                                          # Option + drag rotates: the camera orbits, the point looked at stays
+    pos1, focal1 = state()
+    assert np.linalg.norm(pos1 - pos0) > 1 and np.allclose(focal1, focal0, atol=1e-6)
+    drag(Qt.LeftButton, Qt.AltModifier | Qt.ShiftModifier)                       # Option + Shift + drag pans: camera and focal point slide together
+    pos2, focal2 = state()
+    assert np.linalg.norm(focal2 - focal1) > 1 and np.allclose(pos2 - focal2, pos1 - focal1, atol=1e-6)
+    def distance():
+        return np.linalg.norm(np.array(cam.GetPosition()) - np.array(cam.GetFocalPoint()))
+    d0 = distance()
+    drag(Qt.RightButton, Qt.NoModifier, dx=0, dy=40)                             # right-drag down: zoom in
+    d1 = distance()
+    assert d1 < d0
+    drag(Qt.RightButton, Qt.NoModifier, dx=0, dy=-40)                            # right-drag up: zoom out
+    assert distance() > d1
+    from PySide6.QtCore import QPoint
+    p = QPointF(300, 200)
+    viewport.wheelEvent(QWheelEvent(p, viewport.mapToGlobal(p), QPoint(0, 0), QPoint(0, 120), Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False))
+    d2 = distance()
+    viewport.wheelEvent(QWheelEvent(p, viewport.mapToGlobal(p), QPoint(0, 0), QPoint(0, -120), Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False))
+    assert distance() > d2                                                       # wheel / two-finger scroll up zooms in, down zooms out
+
+
+def test_the_readme_bracket_exercise_works():
+    d = Design("bracket")
+    d.add("box", "block_1", length=100, width=60, height=10)
+    d.add("cylinder", "cylinder_2", radius=8, height=30, x=30)
+    d.add("boolean", "subtract_3", operation="subtract", target="block_1", tool="cylinder_2")
+    assert list(d.parts) == ["block_1"] and d.describe("block_1")["volume_cm3"] == pytest.approx(100 * 60 * 10 / 1000 - np.pi * 8 ** 2 * 10 / 1000, rel=1e-3)
+    d.add("fillet_edges", "blend_4", target="block_1", edges="all", radius=3)
+    v_blend = d.describe("block_1")["volume_cm3"]
+    d.add("hole", "hole_5", target="block_1", side="+z", standard="M6", hole_type="clearance", depth=0, offset_u=-30, offset_v=0)
+    assert d.describe("block_1")["volume_cm3"] < v_blend
+    d.set_variable("plate", 100)
+    d.edit("block_1", length="=plate")                                           # step 7: a formula, then change the variable
+    d.set_variable("plate", 150)
+    assert d.describe("block_1")["size_mm"][0] == pytest.approx(150, abs=0.01) and d.check()["ok"]
+
+
 def test_property_editor_leaves_no_stale_widgets_behind(session):
     from PySide6.QtWidgets import QGroupBox
     editor = PropertyEditor(session)

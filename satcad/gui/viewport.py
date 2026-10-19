@@ -18,7 +18,7 @@ HOW VTK IS EMBEDDED IN QT
 
 MOUSE (NX style, plus Mac trackpad alternatives)
   Left click        select a body          Middle drag      rotate            Shift + middle drag   pan
-  Wheel / pinch     zoom                   Right drag       zoom              Right click           context menu
+  Wheel / 2-finger scroll  zoom                   Right drag       zoom              Right click           context menu
   Alt + left drag   rotate (no middle button)                 Alt + Shift + left drag   pan
 """
 from __future__ import annotations

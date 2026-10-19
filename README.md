@@ -35,6 +35,93 @@ warning; [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) explains the two clicks 
 
 ---
 
+## New to CAD? Start here: moving around and what every button does
+
+You do not need any CAD experience. A CAD program makes **solid 3D objects out of numbers**: you add simple shapes (a block, a cylinder), type their sizes, and combine or reshape them.
+Nothing you do here can break anything: **Ctrl+Z undoes** (Ctrl+Y redoes), and anything satCAD cannot do it explains in the Information window at the bottom instead of changing your part.
+All lengths are in **millimetres**, angles in **degrees**. **X** points right, **Y** points away from you, **Z** points up.
+
+### A. Moving the view (looking around your model)
+
+Moving the *view* never changes your part. It is like walking around a statue.
+
+| You want to | With a mouse that has a middle button | On a Mac trackpad (no middle button) |
+|---|---|---|
+| **Rotate** (look from another side) | hold the **middle button** and drag | hold **Option (Alt)** and drag with one finger |
+| **Pan** (slide the model sideways) | hold **Shift** + the middle button and drag | hold **Option + Shift** and drag |
+| **Zoom** | roll the **wheel**, or hold the **right button** and drag (down zooms in, up zooms out) | **two-finger scroll** up / down |
+| **Select** a body | **left click** it (it turns orange) | tap / click it |
+| Click empty space | selects nothing | same |
+| Context menu (delete, standard views) | **right click** | two-finger click |
+
+Quick keys: **F** zooms to fit the whole model, **Home** gives the corner (isometric) view. The **View** tab has buttons for **Top**, **Front**, **Right**, **Left**, **Isometric** and **Fit**,
+and for how the model is drawn: **Shaded + Edges** (default), **Shaded**, or **Wireframe** (see-through lines). Lost? Press **F**, then **Home**.
+The little X / Y / Z arrows in the corner of the 3D view always show which way you are looking. You cannot turn the model upside down by accident: rotating stops at straight up and straight down.
+
+### B. Moving the part itself (changing where it sits)
+
+This is different from moving the view. Click the part, then look at the **Property Editor** on the right. Type a new number and press **Enter**:
+
+| Box | What it does |
+|---|---|
+| `x`, `y`, `z` | where the part sits, in mm (for a block, cylinder or sphere this is its **centre**) |
+| `rx`, `ry`, `rz` | how much it is turned about each axis, in degrees |
+| `length`, `width`, `height` (or `radius`) | its size |
+
+satCAD is **number-driven**, so there is no drag-the-part-with-the-mouse handle yet: you type where things go. That is deliberate. A typed number is exact, repeatable, and can be a
+formula (type `=` first, e.g. `=wing * 2`, with `wing` defined on the **Expressions** tab), so changing one number can resize and move many parts at once.
+
+### C. What each button does
+
+**Home tab**
+
+| Button | What it does | When you would use it |
+|---|---|---|
+| **New / Open / Save** | start a fresh part, open a saved `.json` design, save yours (Ctrl+N / O / S). Saves go in the `sattelite designs` folder | always |
+| **Body / Face** (Select) | **Body**: clicking picks a whole body. **Face**: clicking picks one flat surface, and **Hole**, **Shell** and **Edge Blend** then start from it | use Face when you want a hole exactly where you click |
+| **Block, Cylinder, Sphere** | add a 100 mm block, a cylinder (radius 30, height 100) or a sphere (radius 50) | the starting shapes for everything |
+| **Unite** | glue two bodies into one (they must touch or overlap) | build a bracket from two blocks |
+| **Subtract** | cut the **tool** body out of the **target** body; the tool disappears | drill a big hole or notch with a cylinder |
+| **Intersect** | keep only the volume both bodies share | trim one shape with another |
+| **Edge Blend** | round off edges with a radius (mm) | remove sharp corners, as on a real machined part |
+| **Chamfer** | bevel edges with a distance (mm), a flat 45-degree cut instead of a curve | the same, for a sharper look |
+| **Hole** | an ISO-standard hole (M3 to M12): *clearance* (a bolt passes through), *tapped* (a bolt screws in), *counterbore* or *countersink* (the bolt head sits flush). Depth 0 = all the way through | bolt holes |
+| **Shell** | hollow a solid out to a wall thickness, leaving the faces you list open (e.g. `+z`) | turn a solid box into an open box |
+| **Undo / Redo / Delete** | step back / forward, or remove the selected feature | when you want to try something |
+
+In the **Edge Blend / Chamfer** dialog the **Edges** choice means: `all` every edge; `parallel:z` the edges running along Z; `face:+z` the edges around the top face.
+The face names `+x -x +y -y +z -z` are the right, left, back, front, top and bottom of the part.
+
+**Assemblies tab**
+
+| Button | What it does |
+|---|---|
+| **New Assembly** | a named group of parts. Give it a hinge axis and angle and the whole group swings about a pivot (a solar wing opening, say) |
+| **Interference** | checks whether any bodies overlap, or float away from everything else, and lists them |
+| **Mass Properties** | total mass, centre of mass and the inertia of the whole model (each part has a material; the default is aluminium 6061) |
+
+**Simulate tab**: **Modal** (how the structure vibrates, shown as an animated picture in your browser) and **Static** (stress and sag under a load such as 6 g) are early-stage **BETA** estimates, not a substitute for
+professional analysis; **Motion Studio / Play** make parts move from equations (see the guide); **STEP / STL / GLB** export your design: STEP for other CAD programs, STL for 3D printing, GLB for web and AR viewers.
+
+**View tab**: the standard views and display modes above, plus **X-Ray** and **Show All** (see the heavy orbital node section).
+
+### D. Your first ten minutes: a bolted bracket
+
+Follow this and you will have used most of the buttons. Every step can be undone.
+
+1. **Block**. In the Property Editor set `length` 100, `width` 60, `height` 10 (a flat plate). Press **F** to fit the view.
+2. **Cylinder**. Set `radius` 8, `height` 30, and `x` 30. It is a rod poking through the plate.
+3. **Subtract**: Target body = the block, Tool body = the cylinder. The rod is gone and left a hole.
+4. **Edge Blend**: Body = the block, Edges = `all`, Radius = 3. The corners are rounded.
+5. Switch **Select** to **Face**, click the top face of the plate beside the hole, click **Hole**, keep M6 clearance and depth 0 (through). A bolt hole appears where you clicked.
+6. Rotate with the middle button (or **Option + drag**) to admire it, then **Mass Properties** to see its weight, and **Save**.
+7. Now fiddle: click the block and change `length` to `150`: everything rebuilds. Try a formula: add a variable `plate` = `100` on the Expressions tab, set the block `length` to `=plate`, then change `plate`.
+
+The **Part Navigator** (left) lists what you did in order (`Block(1)`, `Cylinder(2)`, `Subtract(3)` ...). Click a row to select that step; the tick box hides or shows a body; right click a row to delete it.
+For screenshots of every area, see the [illustrated guide](docs/HOW_TO_USE.md).
+
+---
+
 ## The desktop application (Qt + VTK)
 
 A full desktop window in the layout of a professional CAD package: **ribbon** across the top (Home, Assemblies, Simulate, View), **Part Navigator**
@@ -275,7 +362,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`419 passed` and the path of the connector.
+`421 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -864,7 +951,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-419 tests. They include:
+421 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
