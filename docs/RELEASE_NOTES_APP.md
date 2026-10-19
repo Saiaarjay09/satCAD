@@ -2,7 +2,7 @@
 
 A desktop CAD application for spacecraft design, laid out like a professional CAD package: **ribbon** (Home, Assemblies, Simulate, View),
 **Part Navigator** feature tree, **Property Editor** with formulas, a shaded **3D viewport with edge highlights**, **Boolean** operations (Unite,
-Subtract, Intersect), face picking, Edge Blend / Chamfer / Hole / Shell, assemblies with hinges, mass properties, interference checks, a BETA structural
+Subtract, Intersect), **Motion Studio** (Desmos-style equations of time with auto sliders, revolute / prismatic / spherical joints, a timeline with live position / velocity / acceleration plots, and ready-made motion for the Orbital-Node-Alpha satellite), face picking, Edge Blend / Chamfer / Hole / Shell, assemblies with hinges, mass properties, interference checks, a BETA structural
 (modal and static) analysis, undo / redo, and STEP / STL / GLB export. It runs entirely on your computer. Open and save `.json` parts, including
 ones made by Claude or the SatCAD scripts.
 
