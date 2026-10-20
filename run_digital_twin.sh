@@ -1,9 +1,9 @@
 #!/bin/sh
 # Digital Twin demo for macOS / Linux: satSTK (orbit simulator, broadcasting telemetry) and satCAD (3D model in Digital Twin Listener Mode) side by side.
 #
-#   ./run_digital_twin.sh              start satCAD, then satSTK (found next to this folder, or in $SATSTK_DIR)
+#   ./run_digital_twin.sh              start satCAD, then satSTK (found in $SATSTK_HOME, or ~/Developer/STK, or next to this folder)
 #   ./run_digital_twin.sh --demo       no satSTK needed: stream made-up telemetry from tools/twin_demo_sender.py instead
-#   SATSTK_DIR=/path/to/STK ./run_digital_twin.sh
+#   SATSTK_HOME=/path/to/STK ./run_digital_twin.sh
 #
 # Close either window, or press Ctrl+C here, and both programs stop. See README.md ("Live Digital Twin with satSTK") and docs/TELEMETRY_PROTOCOL.md.
 cd "$(dirname "$0")" || exit 1
@@ -36,22 +36,23 @@ if [ "$MODE" = "demo" ]; then
   "$PY" tools/twin_demo_sender.py &
   PIDS="$PIDS $!"
 else
-  SATSTK_DIR=${SATSTK_DIR:-../STK}
-  [ -d "$SATSTK_DIR" ] || SATSTK_DIR=../satSTK
-  if [ ! -d "$SATSTK_DIR" ]; then
-    echo "Couldn't find satSTK. Set SATSTK_DIR to its folder (for example: SATSTK_DIR=\$HOME/Developer/STK ./run_digital_twin.sh),"
+  SATSTK_HOME=${SATSTK_HOME:-${SATSTK_DIR:-$HOME/Developer/STK}}
+  [ -d "$SATSTK_HOME" ] || SATSTK_HOME=../STK
+  [ -d "$SATSTK_HOME" ] || SATSTK_HOME=../satSTK
+  if [ ! -d "$SATSTK_HOME" ]; then
+    echo "Couldn't find satSTK. Set SATSTK_HOME to its folder (for example: SATSTK_HOME=\$HOME/Developer/STK ./run_digital_twin.sh),"
     echo "or run ./run_digital_twin.sh --demo to try the twin with made-up telemetry."
     exit 1
   fi
-  echo "Starting satSTK from $SATSTK_DIR (broadcasting to 127.0.0.1:9876) ..."
+  echo "Starting satSTK from $SATSTK_HOME (broadcasting to 127.0.0.1:9876) ..."
   # shellcheck disable=SC2086
-  (cd "$SATSTK_DIR" && exec ./run.sh ${SATSTK_ARGS:---broadcast}) &
+  (cd "$SATSTK_HOME" && exec ./run.sh ${SATSTK_ARGS:---broadcast --autoplay --no-placement --speed 60}) &
   PIDS="$PIDS $!"
 fi
 
 if [ "$MODE" = "demo" ]; then
   echo "Demo telemetry is flowing: the satCAD HUD should turn LIVE. Close the satCAD window to stop everything."
 else
-  echo "Both are running. In satSTK press Play; in satCAD the HUD turns LIVE. Close the satCAD window to stop everything."
+  echo "Both are running: satSTK plays an orbit at 60x and the satCAD HUD turns LIVE. Close the satCAD window to stop everything."
 fi
 wait "$SATCAD_PID"

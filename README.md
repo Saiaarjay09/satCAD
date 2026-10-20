@@ -338,8 +338,8 @@ While satSTK runs an orbit it streams its live state, 30 times a second, to `127
 **Run both side by side with one command:**
 
 ```bash
-./run_digital_twin.sh                    # starts satCAD in Digital Twin Listener Mode, then satSTK (found next to this folder, or in $SATSTK_DIR)
-SATSTK_DIR=$HOME/Developer/STK ./run_digital_twin.sh
+./run_digital_twin.sh                    # starts satCAD in Digital Twin Listener Mode, then satSTK (in $SATSTK_HOME, default ~/Developer/STK)
+SATSTK_HOME=$HOME/Developer/STK ./run_digital_twin.sh
 ./run_digital_twin.sh --demo             # no satSTK? stream made-up telemetry instead (tools/twin_demo_sender.py)
 ```
 
@@ -349,7 +349,8 @@ or by hand, in two Terminal windows (set up each once with its own `./setup.sh` 
 # window 1: satCAD, listening
 .venv/bin/python main.py --digital-twin                 # opens the Orbital-Node-Alpha example and switches Live Twin Sync on
 # window 2: satSTK, broadcasting
-cd ../STK && ./run.sh --broadcast                       # press Play: satCAD's HUD turns LIVE
+cd ~/Developer/STK && ./run.sh --broadcast --autoplay --no-placement --speed 60     # satSTK plays an orbit at 60x; satCAD's HUD turns LIVE
+# no window for satSTK?  ./run.sh --headless --broadcast --speed 60
 ```
 
 On macOS, drag the two windows side by side (or give satCAD a place with `--geometry 0,40,960,1000`). You can also switch it on from inside satCAD at any time: **Simulate tab -> Digital Twin -> Live Twin Sync**
