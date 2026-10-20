@@ -399,12 +399,27 @@ def _sys_table(p):
     p.drawLine(QPointF(14, 6), QPointF(14, 26))
 
 
+
+def _twin(p):
+    _pen(p, FILL3, 2.0)
+    p.setBrush(FILL)
+    p.drawRect(QRectF(11, 12, 10, 8))
+    p.setBrush(Qt.NoBrush)
+    _pen(p, FILL3, 1.8)
+    p.drawLine(QPointF(8, 16), QPointF(11, 16))
+    p.drawLine(QPointF(21, 16), QPointF(24, 16))
+    _pen(p, GREEN, 2.0)
+    for r in (7, 11):
+        p.drawArc(QRectF(16 - r, 16 - r, 2 * r, 2 * r), -50 * 16, 100 * 16)
+        p.drawArc(QRectF(16 - r, 16 - r, 2 * r, 2 * r), 130 * 16, 100 * 16)
+
+
 _DRAW = {"block": _block, "cylinder": _cylinder, "sphere": _sphere, "extrude": _extrude, "revolve": _revolve, "unite": _unite,
          "subtract": _subtract, "intersect": _intersect, "blend": _blend, "chamfer": _chamfer, "hole": _hole, "shell": _shell,
          "datum": _datum, "assembly": _assembly, "hinge": _hinge, "check": _check, "mass": _mass, "modal": _modal, "static": _static,
          "new": _new, "open": _open, "save": _save, "undo": _undo, "redo": _redo, "delete": _delete, "export": _export, "fit": _fit,
          "shaded": _shaded, "wire": _wire, "expr": _expr, "sys_wire": _sys_wire, "sys_pipe": _sys_pipe, "sys_fibre": _sys_fibre, "sys_route3d": _sys_route3d,
-         "sys_update": _sys_update, "sys_table": _sys_table,
+         "sys_update": _sys_update, "sys_table": _sys_table, "twin": _twin,
          "view_iso": lambda p: _view(p, "iso"), "view_top": lambda p: _view(p, "top"), "view_front": lambda p: _view(p, "front"),
          "view_right": lambda p: _view(p, "right"), "view_left": lambda p: _view(p, "left")}
 _CACHE: dict = {}

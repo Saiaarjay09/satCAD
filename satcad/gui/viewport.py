@@ -27,7 +27,7 @@ import time
 
 import numpy as np
 from PySide6.QtCore import QPointF, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa: F401  (registers the OpenGL backend)
@@ -37,7 +37,8 @@ from build123d import GeomType
 from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray, vtk_to_numpy
 from vtkmodules.vtkCommonCore import vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
-from vtkmodules.vtkFiltersCore import vtkPolyDataNormals
+from vtkmodules.vtkFiltersCore import vtkPolyDataNormals, vtkTubeFilter
+from vtkmodules.vtkFiltersSources import vtkLineSource
 from vtkmodules.vtkCommonCore import vtkUnsignedCharArray
 from vtkmodules.vtkCommonMath import vtkMatrix4x4
 from vtkmodules.vtkRenderingCore import (vtkActor, vtkCellPicker, vtkLightKit, vtkPolyDataMapper, vtkPropPicker, vtkRenderer, vtkRenderWindow)
@@ -270,6 +271,8 @@ class Viewport(QWidget):
         self._group_matrix: dict[str, vtkMatrix4x4] = {}
         self._color_override: dict[str, tuple] = {}
         self._opacity: dict[str, float] = {}
+        self._rays: dict[str, dict] = {}                                 # glowing laser rays (digital twin): id -> line source, tube filters and actors
+        self._hud: tuple | None = None                                   # (rows, status) painted over the frame in the top-right corner
         self._empty_text = "Create a Block, Cylinder or Sphere from the Home tab"
 
     # ---- rendering -------------------------------------------------------------------------------------------------------------------
@@ -314,6 +317,7 @@ class Viewport(QWidget):
         p.drawImage(0, 0, self._frame)
         p.setRenderHint(QPainter.Antialiasing)
         self._draw_triad(p)
+        self._draw_hud(p)
         if not self._surfaces:
             p.setPen(QColor(theme.PALETTE["muted"]))
             p.drawText(self.rect(), Qt.AlignCenter, self._empty_text)
@@ -492,6 +496,107 @@ class Viewport(QWidget):
             self._ss = ss
             self._apply_state()
             self.request_render()
+
+    # ---- overlays: glowing rays and the heads-up display (digital twin) -----------------------------------------------------------------
+    def set_overlay_rays(self, rays) -> None:
+        """Draw glowing rays: [{id, p0, p1, color, radius?}] in model millimetres. Rays with a known id are moved, not rebuilt; ids not listed are removed.
+        Each is a bright core plus a wider translucent halo. They are not pickable and do not count for Fit."""
+        wanted = {r["id"]: r for r in (rays or [])}
+        for rid in [i for i in self._rays if i not in wanted]:
+            for _tube, actor in self._rays.pop(rid)["parts"]:
+                self.ren.RemoveActor(actor)
+        for rid, r in wanted.items():
+            entry = self._rays.get(rid)
+            if entry is None:
+                src = vtkLineSource()
+                parts = []
+                for opacity, scale in ((1.0, 1.0), (0.22, 4.5)):
+                    tube = vtkTubeFilter()
+                    tube.SetInputConnection(src.GetOutputPort())
+                    tube.SetNumberOfSides(14)
+                    mapper = vtkPolyDataMapper()
+                    mapper.SetInputConnection(tube.GetOutputPort())
+                    actor = vtkActor()
+                    actor.SetMapper(mapper)
+                    actor.GetProperty().LightingOff()
+                    actor.GetProperty().SetOpacity(opacity)
+                    actor.PickableOff()
+                    self.ren.AddActor(actor)
+                    parts.append((tube, actor, scale))
+                entry = self._rays[rid] = dict(src=src, parts=[(t, a) for t, a, _ in parts], scales=[sc for _, _, sc in parts])
+            entry["src"].SetPoint1(*[float(v) for v in r["p0"]])
+            entry["src"].SetPoint2(*[float(v) for v in r["p1"]])
+            length = float(np.linalg.norm(np.asarray(r["p1"], float) - np.asarray(r["p0"], float)))
+            radius = float(r.get("radius", max(5.0, length / 2500.0)))
+            for (tube, actor), scale in zip(entry["parts"], entry["scales"]):
+                tube.SetRadius(radius * scale)
+                actor.GetProperty().SetColor(*[float(v) for v in r.get("color", (0.2, 1.0, 0.6))])
+        self.request_render()
+
+    def set_hud(self, rows, status: str = "LIVE") -> None:
+        """Show a translucent heads-up panel in the top-right corner. rows: [(label, value) | ('title', text) | ('small', text)]; None hides it."""
+        self._hud = (list(rows), status) if rows else None
+        self.update()
+
+    def _draw_hud(self, p: QPainter) -> None:
+        if not self._hud:
+            return
+        rows, status = self._hud
+        title_f, label_f, value_f, small_f = QFont(p.font()), QFont(p.font()), QFont(p.font()), QFont(p.font())
+        title_f.setBold(True)
+        title_f.setPointSize(10)
+        label_f.setPointSize(9)
+        value_f.setBold(True)
+        value_f.setPointSize(11)
+        small_f.setPointSize(8)
+        for f in (title_f, label_f, value_f, small_f):
+            f.setStyleHint(QFont.Monospace)
+        m = {k: QFontMetrics(f) for k, f in (("title", title_f), ("label", label_f), ("value", value_f), ("small", small_f))}
+        pad, line_gap = 12, 5
+        width, height = 0, pad
+        for kind, *rest in rows:
+            if kind in ("title", "small"):
+                width = max(width, m[kind].horizontalAdvance(rest[0]))
+                height += m[kind].height() + (line_gap + 3 if kind == "title" else 1)
+            else:
+                width = max(width, m["label"].horizontalAdvance(kind) + 14 + m["value"].horizontalAdvance(rest[0]))
+                height += max(m["label"].height(), m["value"].height()) + line_gap
+        width = min(width + 2 * pad + 6, max(self.width() - 24, 80))
+        x0, y0 = self.width() - width - 12, 12
+        p.save()
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(QPen(QColor(255, 176, 32, 150), 1.2))
+        p.setBrush(QColor(10, 14, 20, 185))
+        p.drawRoundedRect(x0, y0, width, height + pad - 4, 8, 8)
+        y = y0 + pad
+        dot = {"LIVE": QColor("#5fd08a"), "STALE": QColor("#ffb020")}.get(status, QColor("#8a929c"))
+        for kind, *rest in rows:
+            if kind == "title":
+                p.setFont(title_f)
+                p.setPen(QColor("#ffcf70"))
+                y += m["title"].ascent()
+                p.drawText(x0 + pad, y, rest[0].replace("\u25cf", "").rstrip())
+                p.setBrush(dot)
+                p.setPen(Qt.NoPen)
+                p.drawEllipse(QPointF(x0 + width - pad - 5, y - m["title"].ascent() / 2 + 1), 5, 5)
+                y += m["title"].descent() + line_gap + 3
+            elif kind == "small":
+                p.setFont(small_f)
+                p.setPen(QColor("#9aa6b4"))
+                y += m["small"].ascent()
+                p.drawText(x0 + pad, y, m["small"].elidedText(rest[0], Qt.ElideRight, width - 2 * pad))
+                y += m["small"].descent() + 1
+            else:
+                p.setFont(label_f)
+                p.setPen(QColor("#9aa6b4"))
+                y += m["value"].ascent()
+                p.drawText(x0 + pad, y, kind)
+                p.setFont(value_f)
+                p.setPen(QColor("#e8edf3"))
+                text = rest[0]
+                p.drawText(x0 + width - pad - m["value"].horizontalAdvance(text), y, text)
+                y += m["value"].descent() + line_gap
+        p.restore()
 
     # ---- selection filter and face overlay -------------------------------------------------------------------------------------------
     def set_filter(self, mode: str) -> None:

@@ -31,6 +31,7 @@ class MotionStudio(QObject):
         self.pulses: list[ColorPulse] = []
         self.t, self.t_max, self.speed, self.loop = 0.0, 5400.0, 1.0, True
         self.playing = False
+        self.suspended = False                       # the Digital Twin owns the moving groups and colours while this is True
         self._last = 0.0
         self.fps = 0.0
         self.timer = QTimer(self)
@@ -105,7 +106,20 @@ class MotionStudio(QObject):
         self.model_changed.emit()
 
     # ---- binding to the viewport -------------------------------------------------------------------------------------------------
+    def suspend(self) -> None:
+        """Hand the viewport's moving groups and colours to another controller (Live Digital Twin Sync): stop playing and stop touching the viewport."""
+        self.pause()
+        self.suspended = True
+
+    def resume(self) -> None:
+        """Take the viewport back and pose the model where Motion Studio says it should be."""
+        self.suspended = False
+        self._bind()
+        self._refresh_pose()
+
     def _bind(self) -> None:
+        if self.suspended:
+            return
         groups = {j.name: self.solver.parts_of(j.name) for j in self.solver.joints}
         self.viewport.bind_motion_groups({g: p for g, p in groups.items() if p})
 
@@ -156,6 +170,8 @@ class MotionStudio(QObject):
 
     def pose(self, t: float) -> None:
         """Move the model to time t."""
+        if self.suspended:
+            return
         matrices = self.solver.joint_matrices(self.joint_values(t))
         self.viewport.set_group_matrices(matrices)
         if self.pulses:

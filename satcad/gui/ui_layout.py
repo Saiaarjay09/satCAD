@@ -19,6 +19,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QDockWidget, QLabel, QMainWindow, QMessageBox, QTextEdit, QVBoxLayout, QWidget)
 
 from .commands import Commands
+from .digital_twin_listener import DigitalTwin
 from .icons import icon
 from .motion_expressions import MotionExpressionsDock
 from .motion_studio import MotionStudio
@@ -114,6 +115,7 @@ class MainWindow(QMainWindow):
 
         # ---- Motion Studio docks (hidden until used) ----------------------------------------------------------------------------------------
         self.motion = MotionStudio(self.session, self.viewport) if hasattr(self.viewport, "bind_motion_groups") else None
+        self.twin = DigitalTwin(self) if hasattr(self.viewport, "set_hud") else None            # Live Digital Twin Sync (satSTK telemetry)
         self.motion_dock = self.timeline_dock = None
         if self.motion is not None:
             self.motion_dock = MotionExpressionsDock(self.motion, self)
@@ -192,6 +194,10 @@ class MainWindow(QMainWindow):
         g = sim.add_group("Motion")
         g.add_button("Motion Studio", "modal", self.show_motion, "Open the Motion Studio sidebar and timeline")
         g.add_button("Play", "static", self.toggle_play, "Play or pause the animation")
+        g = sim.add_group("Digital Twin")
+        self.twin_button = g.add_button("Live Twin Sync", "twin", lambda: self.set_twin(self.twin_button.isChecked()),
+                                        "Digital Twin: listen for live telemetry from satSTK on 127.0.0.1:9876 and move the solar arrays and laser turrets, "
+                                        "colour the cooling parts by temperature and show a heads-up display. Press again to stop.", checkable=True)
         g = sim.add_group("Report")
         g.add_button("Mass Properties", "mass", c.mass_properties)
         g.add_button("Interference", "check", c.check)
@@ -321,6 +327,8 @@ class MainWindow(QMainWindow):
         s.changed.connect(self._refresh_all)
         s.loaded.connect(lambda: setattr(self, "_fit_next", True))
         s.message.connect(self._on_message)
+        if self.twin is not None:
+            self.twin.running_changed.connect(lambda on: self.twin_button.setChecked(on))
         s.selection_changed.connect(self._on_selection)
         s.dirty_changed.connect(lambda _d: self._update_title())
         nav.selected.connect(s.select)
@@ -349,6 +357,14 @@ class MainWindow(QMainWindow):
             return
         self.show_motion()
         self.motion.pause() if self.motion.playing else self.motion.play()
+
+    def set_twin(self, on: bool) -> None:
+        """The Live Digital Twin Sync toggle: start or stop listening for satSTK telemetry."""
+        if self.twin is None:
+            self.twin_button.setChecked(False)
+            return
+        ok = self.twin.set_enabled(bool(on))
+        self.twin_button.setChecked(self.twin.running if ok else False)
 
     def add_joint(self, kind: str) -> None:
         if self.motion is None:
@@ -482,6 +498,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, ev):
         if self.confirm_discard():
+            if self.twin is not None:
+                self.twin.stop()                                   # end the listener thread cleanly
             ev.accept()
         else:
             ev.ignore()

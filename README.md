@@ -323,6 +323,55 @@ routing.update(d, S)                        # ...and re-route everything in one 
 MIL-W-5088 / ECSS harness analysis, not flight-qualified, and it has no connector pin-outs, formboards, variants or parts library yet. How it compares with Siemens Capital, point by
 point and without hype, is in [docs/CAPITAL_BENCHMARK.md](docs/CAPITAL_BENCHMARK.md).
 
+## Live Digital Twin with satSTK (macOS)
+
+satCAD can be the 3D "digital twin" of the satellite that **satSTK** (the orbital mission and laser-link simulator, [Saiaarjay09/satSTK](https://github.com/Saiaarjay09/satSTK)) is flying.
+While satSTK runs an orbit it streams its live state, 30 times a second, to `127.0.0.1:9876`; satCAD listens on a background thread and, **without freezing the viewport**:
+
+- turns the **+X and -X solar arrays** to the angle that points them at the Sun (`sun_vector_body_deg`);
+- swivels the **azimuth and elevation stages of the active OISL laser turret** and draws a **glowing laser ray** out of the telescope barrel toward the locked target (a different colour for each relay);
+- colours the **16 copper cold plates, the hot manifold pipes and the radiator panels** from the core temperature: cool blue at 30 degC, gold / white at 60, throttle crimson at 85;
+- shows a translucent **heads-up display** in the top-right corner of the 3D view: active relay target, core temperature, modulation scheme and link throughput (plus SNR, BER, turret angles, Sun angle and a LIVE / STALE / WAITING light).
+
+![satCAD in Digital Twin mode: arrays turned, a laser ray to a relay, cooling parts coloured by temperature, HUD top right](docs/howto/30_digital_twin.png)
+
+**Run both side by side with one command:**
+
+```bash
+./run_digital_twin.sh                    # starts satCAD in Digital Twin Listener Mode, then satSTK (found next to this folder, or in $SATSTK_DIR)
+SATSTK_DIR=$HOME/Developer/STK ./run_digital_twin.sh
+./run_digital_twin.sh --demo             # no satSTK? stream made-up telemetry instead (tools/twin_demo_sender.py)
+```
+
+or by hand, in two Terminal windows (set up each once with its own `./setup.sh` / `./run.sh`):
+
+```bash
+# window 1: satCAD, listening
+.venv/bin/python main.py --digital-twin                 # opens the Orbital-Node-Alpha example and switches Live Twin Sync on
+# window 2: satSTK, broadcasting
+cd ../STK && ./run.sh --broadcast                       # press Play: satCAD's HUD turns LIVE
+```
+
+On macOS, drag the two windows side by side (or give satCAD a place with `--geometry 0,40,960,1000`). You can also switch it on from inside satCAD at any time: **Simulate tab -> Digital Twin -> Live Twin Sync**
+(press again to stop). Options: `--model PART.json`, `--twin-port N` (default 9876), `--twin-status-port N` (default 9877, `0` turns the status datagrams off).
+
+**How it works, and what it needs.** The model must have the parts the twin drives, named as in the Orbital-Node-Alpha example (`sattelite designs/orbital_node_alpha_with_motion.json`: assemblies
+`solar_pos_x_wing`, `turret_fwd_a_az` / `_el` ..., parts `coldplate`, `hot_manifold`, `radiator_panel`). Anything it does not find is simply not driven (the heavy orbital node, for example, gets the thermal
+colours and the HUD but has no solar arrays or articulated turrets), and the Information window says what was found. While the twin is on, Motion Studio is paused so the two never fight over the model.
+It uses the same kinematic solver and per-group matrices as Motion Studio, so nothing is re-meshed. (satCAD's geometry kernel is OpenCASCADE through build123d, not PythonOCC, so the pose is applied as 4x4
+matrices to the existing actors rather than as `gp_Trsf` on shapes.)
+
+| | |
+|---|---|
+| Transport | UDP, one JSON packet per datagram, `127.0.0.1:9876`, loopback only (satCAD refuses any other address) |
+| Packet | `timestamp_utc`, `sun_vector_body_deg` (0 to 360), `active_relay_id`, `turret_angles_deg {azimuth, elevation, fsm_x_urad, fsm_y_urad}`, `thermal_state {core_temp_c, radiator_temp_c, coolant_flow_lpm, bypass_valve_pct, throttle_mode}`, `dsp_metrics {modulation, snr_db, ber, throughput_gbps}` |
+| Return channel | satCAD sends a tiny status datagram to `127.0.0.1:9877` once a second so satSTK can show "satCAD connected" |
+| Safety | datagrams are size-limited and parsed as JSON (never evaluated); every number is range-checked and clamped; a bad packet is counted and ignored; the link carries no commands |
+
+The full wire format, the angle conventions and the status packet are in [docs/TELEMETRY_PROTOCOL.md](docs/TELEMETRY_PROTOCOL.md).
+Honest limits: the twin shows what satSTK reports; it does not check the numbers. The FSM angles are microradians (far too small to see), so they appear in the HUD and bend the ray by the true amount
+but not the mirror. Windows is untested.
+
 ## How to use satCAD
 
 **New here? Read the illustrated guide: [docs/HOW_TO_USE.md](docs/HOW_TO_USE.md).** It walks through the app step by step with screenshots: installing, the five areas of the
@@ -406,7 +455,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`462 passed` and the path of the connector.
+`528 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -747,6 +796,7 @@ Open-source-CAD-software/
 ├── sattelite designs/          ALL saved satellite designs: STEP files and .json recipes (see its README)
 ├── generate_orbital_node_assembly.py   builds the detailed Orbital-Node-Alpha satellite (6 sub-assemblies, 405 bodies, STEP export)
 ├── generate_heavy_orbital_node.py   builds the heavy orbital node (16 trays, power / optical / fluid schematics, 16 m radiator wings, full wiring / cooling / optical netlist; 343 bodies, STEP export)
+├── run_digital_twin.sh       starts satSTK (broadcasting) and satCAD (Digital Twin Listener Mode) side by side
 ├── studio_app.py             entry point of the SatCAD Studio app
 ├── studio.spec / studio.iss  recipes that package Studio (PyInstaller) and make the Windows installer (Inno Setup)
 ├── run_server.sh             starts the Claude connector; Claude runs this for you
@@ -762,6 +812,7 @@ Open-source-CAD-software/
 │   │                         No Claude code in here.
 │   ├── expressions.py        the safe formula interpreter behind variables and "=formulas"
 │   ├── systems.py            wiring / tubing / fibre netlists: engineering maths (Ohm, Darcy-Weisbach, radiator, fibre loss) and the rule checks
+│   ├── digital_twin.py       Digital Twin, the pure part: telemetry packets, the state, thermal colours, finding and posing the solar arrays and turrets
 │   ├── routing.py            the right-angled cable / tube router and the conversion of routes into swept 3D tubes
 │   ├── diagrams.py           the wiring, cooling and optical diagrams, the 3D routing view and the CSV cut lists
 │   ├── viewer.py             writes the interactive 3D viewer (assembly tree, hinge sliders) and the animated mode-shape viewer
@@ -772,6 +823,7 @@ Open-source-CAD-software/
 │   │   ├── ribbon.py         the tabbed ribbon widget
 │   │   ├── navigator.py      the Part Navigator feature tree
 │   │   ├── properties.py     the Property Editor and Expressions list
+│   │   ├── digital_twin_listener.py  Live Digital Twin Sync: the UDP listener thread and the controller that applies telemetry to the viewport
 │   │   ├── commands.py       ribbon commands and their dialogs (Boolean, Edge Blend, Hole, Shell, analysis, export)
 │   │   ├── session.py        the open document: wraps the engine, undo / redo, change signals
 │   │   ├── kinematics_solver.py  joints (revolute / prismatic / spherical), nested chains and 4x4 transforms: pure NumPy
@@ -998,7 +1050,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-462 tests. They include:
+528 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
@@ -1007,6 +1059,7 @@ python -m pytest -q
 - Assemblies and hinges, ISO hole and screw dimensions, thread engagement, shell / sweep / loft validation, and the stow-and-deploy poses.
 - Volumes of extrudes, tubes, revolves, fillets, holes and pockets; pattern and mirror positions.
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
+- Digital Twin: packet parsing and rejection, the state, thermal colours, finding and posing the arrays and turrets (against the satSTK angle formulas), the UDP listener thread (real sockets, floods, bad packets, loopback-only, port in use, status datagrams), the HUD and the toggle.
 - Systems: the wiring / cooling / optical maths against hand calculations, the router (right angles, bend legs, clearances), stale-route detection and one-click update, the three diagrams (valid SVG, escaped text), the 3D routing view data and the Systems tab.
 - The heavy orbital node (bodies, 16 trays at the right pitch, ridge and rifled-tube geometry, the three parameters, the CLI), X-Ray, layers and Part Navigator folder toggles.
 - Panel placement and tilt on all six faces, parametric rebuilds, error messages, save/load (including older files),

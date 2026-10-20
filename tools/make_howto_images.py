@@ -180,6 +180,41 @@ def systems_section() -> None:
         print("wrote", name, img.width(), "x", img.height())
 
 
+def twin_section() -> None:
+    """Section 6d: Live Digital Twin Sync. Drives the real listener with a real UDP packet. `python tools/make_howto_images.py --twin` redraws only this."""
+    import json
+    import socket
+    import time
+
+    win, s = new_window((1600, 960))
+    s.open(ROOT / "sattelite designs" / "orbital_node_alpha_with_motion.json")
+    win.navigator._items["bus_hull"].setCheckState(0, Qt.Unchecked)
+    win.twin.port, win.twin.status_port = 0, None
+    win.ribbon.setCurrentIndex([win.ribbon.tabText(i) for i in range(win.ribbon.count())].index("Simulate"))
+    win.set_twin(True)
+    t0 = time.time()
+    while not win.twin.bound_port and time.time() - t0 < 5:
+        settle(1)
+        time.sleep(0.02)
+    tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    pkt = {"v": 1, "seq": 1, "timestamp_utc": "2026-12-21T03:14:15.926Z", "sun_vector_body_deg": 130.0, "active_relay_id": "GEO-RELAY-ATL", "active_turret_id": "fwd_b",
+           "turret_angles_deg": {"azimuth": -38.0, "elevation": 24.0, "fsm_x_urad": 35.0, "fsm_y_urad": -20.0},
+           "thermal_state": {"core_temp_c": 74.0, "radiator_temp_c": 24.5, "coolant_flow_lpm": 40.2, "bypass_valve_pct": 8.0, "throttle_mode": "NOMINAL"},
+           "dsp_metrics": {"modulation": "16QAM", "snr_db": 21.3, "ber": 1.2e-11, "throughput_gbps": 40.0}}
+    tx.sendto(json.dumps(pkt).encode(), ("127.0.0.1", win.twin.bound_port))
+    t0 = time.time()
+    while win.twin.state.frames < 1 and time.time() - t0 < 5:
+        settle(1)
+        time.sleep(0.02)
+    win.viewport.set_view("iso")
+    win.viewport.zoom_by(3.4)
+    s.select(None)
+    settle(6)
+    grab_window(win, "30_digital_twin.png", [(rect_of(win, win.twin_button), "Live Twin Sync", "tr"), (rect_of(win, win.viewport), "satSTK telemetry moves the arrays and turrets, colours the cooling parts and drives the HUD")])
+    win.set_twin(False)
+    win.close()
+
+
 def main() -> None:
     # ---- 1. an empty window, annotated ---------------------------------------------------------------------------------------------
     win, s = new_window()
@@ -325,6 +360,7 @@ def main() -> None:
     win.close()
     heavy_section()
     systems_section()
+    twin_section()
     print("done")
 
 
@@ -333,5 +369,7 @@ if __name__ == "__main__":
         heavy_section()
     elif "--systems" in sys.argv:
         systems_section()
+    elif "--twin" in sys.argv:
+        twin_section()
     else:
         main()

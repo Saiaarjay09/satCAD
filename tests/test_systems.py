@@ -613,4 +613,4 @@ def test_update_from_the_button_is_one_undoable_step(window):
 
 def test_the_app_ships_no_pre_installed_systems():
     sources = "".join(p.read_text() for p in (ROOT / "satcad").rglob("*.py")) + (ROOT / "satcad_app.spec").read_text()
-    assert "generate_heavy_orbital_node" not in sources and "Orbital-Node" not in sources
+    assert "generate_heavy_orbital_node" not in sources and "heavy_orbital_node" not in sources

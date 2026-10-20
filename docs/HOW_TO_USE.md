@@ -288,6 +288,31 @@ tubes or fibres (`auto=True` lets the router find the path), describe the coolan
 
 ---
 
+### 6d. Live Digital Twin: watching satSTK's satellite move
+
+If you also run **satSTK** (the orbit and laser-link simulator), satCAD can mirror it live. Open the Orbital-Node-Alpha example (section 6), then **Simulate tab -> Digital Twin -> Live Twin Sync**.
+(Or from Terminal: `./run_digital_twin.sh`, which starts both programs; add `--demo` to try it with made-up telemetry when satSTK is not installed.)
+
+![Live Twin Sync running](howto/30_digital_twin.png)
+
+What you see once satSTK is playing:
+
+| In the 3D view | Driven by |
+|---|---|
+| the two **solar arrays** turn about the X axis and keep facing the Sun | `sun_vector_body_deg` |
+| the active **laser turret** swivels (azimuth, then elevation) and a glowing **ray** leaves the telescope toward the locked relay | `turret_angles_deg`, `active_relay_id` |
+| the **cold plates, hot pipes and radiator panels** go from blue (30 degC) through gold-white (60) to crimson (85) | `core_temp_c` |
+| the **HUD** (top right): active relay target, core temperature, modulation, throughput, and a green LIVE / amber STALE / grey WAITING light | the whole packet |
+
+- **WAITING** means satCAD is listening but nothing has arrived yet; **STALE** means nothing for a second (the model holds its last pose); **LIVE** means packets are flowing.
+- Press **Live Twin Sync** again to stop: the HUD and ray disappear and Motion Studio gets the model back.
+- Rotate, zoom and pan as usual while it runs; the viewport never waits for the network.
+- A model without the named parts still shows the HUD and whatever it can colour.
+
+The packet format and the angle conventions are in [TELEMETRY_PROTOCOL.md](TELEMETRY_PROTOCOL.md).
+
+---
+
 ## 7. Motion Studio: making things move
 
 Motion Studio lets you type **formulas of time** (like the graphing calculator Desmos), attach them to parts as **joints**, and play the result in 3D with live graphs.

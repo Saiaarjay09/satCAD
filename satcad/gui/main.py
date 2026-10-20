@@ -72,6 +72,11 @@ def main(argv=None) -> int:
     ap.add_argument("file", nargs="?", help="a saved part (.json) to open")
     ap.add_argument("--demo", action="store_true", help="start with a small example part")
     ap.add_argument("--screenshot", metavar="PNG", help="render the window to a PNG file and quit (for documentation)")
+    ap.add_argument("--digital-twin", action="store_true", help="Digital Twin Listener Mode: open the model and start listening for satSTK telemetry (see docs/TELEMETRY_PROTOCOL.md)")
+    ap.add_argument("--model", metavar="PART.json", help="with --digital-twin: the model to drive (default: the Orbital-Node-Alpha example in the designs folder)")
+    ap.add_argument("--twin-port", type=int, default=9876, help="UDP port to listen on for telemetry (default 9876, loopback only)")
+    ap.add_argument("--twin-status-port", type=int, default=9877, help="UDP port the status datagrams are sent to (default 9877; 0 turns them off)")
+    ap.add_argument("--geometry", metavar="X,Y,W,H", help="place the window (pixels), for example 0,40,960,1000 to tile it beside another program")
     ap.add_argument("--selftest", action="store_true", help="check that the installation works (kernel, Qt, VTK) and exit 0 or 1")
     args = ap.parse_args(argv)
     if args.selftest:
@@ -88,11 +93,26 @@ def main(argv=None) -> int:
     theme.apply(app)
     session = Session()
     win = MainWindow(session)
-    if args.file:
-        session.open(args.file)
+    if args.digital_twin and not (args.file or args.model):
+        from ..paths import designs_dir
+        default = designs_dir() / "orbital_node_alpha_with_motion.json"
+        args.model = str(default) if default.exists() else None
+    if args.file or args.model:
+        session.open(args.file or args.model)
+    elif args.digital_twin:
+        session.message.emit("warn", "Digital Twin: no model given. Open orbital_node_alpha_with_motion.json from the 'sattelite designs' folder (File > Open), or start with --model.")
     elif args.demo or args.screenshot:
         build_demo(session)
+    if args.geometry:
+        try:
+            x, y, w, h = (int(v) for v in args.geometry.split(","))
+            win.setGeometry(x, y, w, h)
+        except ValueError:
+            session.message.emit("warn", f"--geometry wants four whole numbers X,Y,W,H, not '{args.geometry}'.")
     win.show()
+    if args.digital_twin and win.twin is not None:
+        win.twin.port, win.twin.status_port = args.twin_port, (args.twin_status_port or None)
+        win.set_twin(True)
     if args.screenshot:
         def snap():
             session.select(next(iter(session.design.features), None))       # show the Property Editor with a feature open
