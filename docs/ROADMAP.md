@@ -39,7 +39,7 @@ Legend: **yes** = implemented and tested, **partial** = works for simple cases, 
 | Bill of materials | **yes** | CSV, with assembly column |
 | Materials with structural properties | **partial** | 10 materials: density, E, nu, yield, CTE, conductivity. Typical values only, not allowables |
 | STEP / STL / GLB export | **yes** | STEP carries part names and colours. Metadata such as PMI is not written |
-| STEP import (use vendor/other-CAD parts) | **no** | |
+| STEP import (use vendor/other-CAD parts) | **partial** | Solid bodies with names and colours (Home -> Open); no assembly structure, PMI or surfaces |
 | Interactive 3D viewer | **yes** | Browser-based: orbit, pick, hide, explode, centre of mass |
 | 2D engineering drawings (dimensions, tolerances, PMI) | **no** | |
 | Structural analysis (FEA: stress, modal/vibration) | **beta** | Own shell solver: g-load/pressure statics with stress and margin of safety, and modal analysis with animated mode shapes. Flat plates only; validated against plate theory. Not a substitute for a certified solver |

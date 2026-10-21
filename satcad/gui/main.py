@@ -69,7 +69,7 @@ def selftest() -> int:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="satCAD desktop application")
-    ap.add_argument("file", nargs="?", help="a saved part (.json) to open")
+    ap.add_argument("file", nargs="?", help="a saved part (.json) or a STEP file (.step, .stp) to open")
     ap.add_argument("--demo", action="store_true", help="start with a small example part")
     ap.add_argument("--screenshot", metavar="PNG", help="render the window to a PNG file and quit (for documentation)")
     ap.add_argument("--digital-twin", action="store_true", help="Digital Twin Listener Mode: open the model and start listening for satSTK telemetry (see docs/TELEMETRY_PROTOCOL.md)")

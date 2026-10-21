@@ -429,7 +429,7 @@ The Open, Save and Export dialogs start in that folder. Command line:
 python generate_orbital_node_assembly.py --step my_alpha.step --json my_alpha.json    # a bare file name goes into the folder
 ```
 
-satCAD does not import STEP files yet; open `.json` designs.
+**Home -> Open** also reads `.step` / `.stp` files: every solid in the file becomes a body (with the name and colour the file carries). It is read-only geometry: no features to edit, and the design points at the STEP file instead of copying it, so keep the file where it is. Use **Save** to keep it as a `.json`. For your own designs, open the `.json`.
 
 ---
 

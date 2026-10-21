@@ -218,7 +218,7 @@ class Commands:
     def open(self) -> None:
         if not self.w.confirm_discard():
             return
-        path, _ = QFileDialog.getOpenFileName(self.w, "Open part", str(designs_dir()), "SatCAD parts (*.json);;All files (*)")
+        path, _ = QFileDialog.getOpenFileName(self.w, "Open part", str(designs_dir()), "SatCAD parts and STEP files (*.json *.step *.stp);;SatCAD parts (*.json);;STEP files (*.step *.stp);;All files (*)")
         if path:
             self.s.open(path)
 

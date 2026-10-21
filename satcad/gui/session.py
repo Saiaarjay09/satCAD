@@ -212,6 +212,8 @@ class Session(QObject):
 
     def open(self, path) -> bool:
         path = Path(path)
+        if path.suffix.lower() in (".step", ".stp"):
+            return self.import_step(path)
         extras = {}
         try:
             fresh = Design("untitled")
@@ -231,6 +233,26 @@ class Session(QObject):
         self.loaded.emit()
         self.changed.emit()
         self.message.emit("info", f"Opened {path.name}: {len(fresh.features)} features, {len(fresh.parts)} bodies")
+        return True
+
+    def import_step(self, path) -> bool:
+        """Open a STEP file as a new design: one body per solid in the file. The design points at the STEP file (it does not copy it), and has no .json yet, so Save asks for a name."""
+        path = Path(path)
+        name = re.sub(r"[^A-Za-z0-9_-]", "_", path.stem)[:36] or "import"
+        try:
+            fresh = Design(name)
+            fresh.add("step_import", name, file=str(path.resolve()))
+        except (DesignError, ValueError, OSError) as e:
+            self.message.emit("error", f"Couldn't open {path.name}: {e}")
+            return False
+        self.design, self.path, self._selected, self.extras = fresh, None, None, {}
+        self._undo.clear()
+        self._redo.clear()
+        self._set_dirty(True)
+        self.selection_changed.emit(None)
+        self.loaded.emit()
+        self.changed.emit()
+        self.message.emit("info", f"Imported {path.name}: {len(fresh.parts)} bodies. Save it as a .json to keep it as a satCAD design (it keeps pointing at the STEP file).")
         return True
 
     def save(self, path=None) -> bool:

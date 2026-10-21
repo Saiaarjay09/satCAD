@@ -24,7 +24,14 @@ The apps are **not code-signed** (signing needs a paid developer identity), so y
 
 Mouse: left click selects, **middle drag rotates**, **Shift + middle drag pans**, scroll zooms. No middle button? **Alt + left drag** rotates, **Alt + Shift + left drag** pans.
 
+### What's new
+
+- **Opens `.step` / `.stp` files** (Home -> Open): every solid becomes a body, with the name and colour in the file.
+- **Opens designs made with the newer tools**: the layer setting used by X-Ray and the Systems tab, grid patterns and Motion Studio sliders. Older versions refused these files with "'box' has no setting called ['layer']".
+- **Systems tab**: wiring, cooling and optical networks with routed 3D tubes, diagrams and checks.
+- **Live Digital Twin Sync** with satSTK telemetry, a **DEPLOYMENT_RATIO** slider in the Property Editor and four one-click view presets (Full, Stowed, Schematics, X-Ray).
+
 ### Please note
 
 A **concept-design** tool: the analysis is a BETA flat-plate model, and nothing here is certified for flight hardware (see `docs/NX_BENCHMARK.md`). The 3D view needs a
-working OpenGL driver (any ordinary PC or Mac). Bodies and flat faces can be picked (Select filter on the Home tab); there is no single-edge picking, no sketcher and no STEP import yet.
+working OpenGL driver (any ordinary PC or Mac). Bodies and flat faces can be picked (Select filter on the Home tab); there is no single-edge picking, no sketcher, and STEP import brings in solid bodies only (no assembly structure).

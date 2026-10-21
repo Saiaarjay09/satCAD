@@ -460,7 +460,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`564 passed` and the path of the connector.
+`572 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -867,6 +867,7 @@ Open-source-CAD-software/
 │   ├── test_paths_and_docs.py  the designs-folder rule (every STEP file lives there) and the how-to guide's links and pictures
 │   ├── test_motion.py        Motion Studio: expressions, solver, presets, playback, docks
 │   ├── test_orbital_node_assembly.py  the Alpha generator: structure, parameters, geometry, colours, STEP
+│   ├── test_step_import.py   opening STEP files: the step_import feature, Open, and error messages
 │   ├── test_deployment_ratio_ui.py  the DEPLOYMENT_RATIO slider in the Property Editor and the four view presets
 │   ├── test_alpha_sigma.py   the Alpha-Sigma design checks (run only where its private design files are present)
 │   ├── test_gui.py           the desktop application, headless: session / undo, navigator, property editor, viewport geometry, camera and mouse, window wiring
@@ -1057,7 +1058,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-564 tests. They include:
+572 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
@@ -1068,7 +1069,7 @@ python -m pytest -q
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
 - Digital Twin: packet parsing and rejection, the state, thermal colours, finding and posing the arrays and turrets (against the satSTK angle formulas), the UDP listener thread (real sockets, floods, bad packets, loopback-only, port in use, status datagrams), the HUD and the toggle.
 - Systems: the wiring / cooling / optical maths against hand calculations, the router (right angles, bend legs, clearances), stale-route detection and one-click update, the three diagrams (valid SVG, escaped text), the 3D routing view data and the Systems tab.
-- The DEPLOYMENT_RATIO slider in the Property Editor and the four one-click view presets; the large private Alpha-Sigma design has its own checks that run only where its files are present.
+- Opening STEP files (one body per solid, names and colours kept, clear errors for missing or damaged files); the DEPLOYMENT_RATIO slider in the Property Editor and the four one-click view presets; the large private Alpha-Sigma design has its own checks that run only where its files are present.
 - The heavy orbital node (bodies, 16 trays at the right pitch, ridge and rifled-tube geometry, the three parameters, the CLI), X-Ray, layers and Part Navigator folder toggles.
 - Panel placement and tilt on all six faces, parametric rebuilds, error messages, save/load (including older files),
   STEP round-tripping, the Stefan-Boltzmann and solar maths, picture and viewer output (including a script-injection test),
@@ -1094,7 +1095,7 @@ Read **[docs/ROADMAP.md](docs/ROADMAP.md)** for the full capability map and plan
 - **Concept-stage tool.** Good for layout, sizing, mass and inertia budgets, trade studies and driving the design from Claude. Not a
   substitute for professional CAD with certified analysis, and not a sole basis for flight hardware.
 - **Geometry:** boxes, cylinders, spheres, hollow shells, flat panels, extrusions, revolves, sweeps, lofts, shells, edge fillets, ISO holes
-  and screws, patterns, mirrors. No constraint-based sketcher, free-form surfaces, sheet metal, general assembly mates, STEP import or
+  and screws, patterns, mirrors. No constraint-based sketcher, free-form surfaces, sheet metal, general assembly mates, STEP import of anything but plain solid bodies (no assembly structure or metadata), or
   2D drawings yet. Threads are cosmetic.
 - **Masses and inertia** are exact for the modelled shapes, but depend on simple material densities and idealised blocks for equipment.
 - **`size_radiator` is a lower bound.** It ignores sunlight, Earth heat and albedo, and the temperature drop across the panel and its plumbing.

@@ -84,6 +84,7 @@ SCHEMAS: dict[str, dict] = {
     "sweep": {**_COMMON, "profile": "circle", "radius": None, "width": None, "height": None, "wall": 0.0,
               "path": REQ, "bend_radius": 0.0, **_POSE},
     "loft": {**_COMMON, "sections": REQ, "plane": "xy", **_POSE},
+    "step_import": {**_COMMON, "file": REQ, "scale": 1.0, **_POSE},              # bodies read from a STEP file (one part per solid)
     "fillet_edges": {"target": REQ, "edges": REQ, "radius": 0.0, "chamfer": 0.0},
     "hole": {"target": REQ, "side": REQ, "standard": REQ, "hole_type": "clearance", "depth": 0.0, "offset_u": 0.0,
              "offset_v": 0.0, "count_u": 1, "pitch_u": 0.0, "count_v": 1, "pitch_v": 0.0, "circle_count": 0,
@@ -374,6 +375,11 @@ class Design:
                 raise DesignError("Use either fillet (rounded edges) or chamfer (angled edges), not both.")
             if max(full["fillet"], full["chamfer"]) * 2 >= smallest:
                 raise DesignError("The fillet/chamfer is too big: twice its size must be smaller than every dimension.")
+        if kind == "step_import":
+            if not isinstance(full["file"], str) or not full["file"].strip():
+                raise DesignError("A STEP import needs 'file': the path of a .step or .stp file.")
+            if not isinstance(full["scale"], (int, float)) or isinstance(full["scale"], bool) or full["scale"] <= 0:
+                raise DesignError("A STEP import's 'scale' must be a number greater than 0 (1 keeps the file's millimetres, 1000 turns metres into millimetres).")
         if kind == "cylinder" and full["axis"] not in AXES:
             raise DesignError("A cylinder's axis must be 'x', 'y' or 'z'.")
         if kind == "chassis" and full["wall"] < 0:
@@ -672,6 +678,8 @@ class Design:
             self.parts[f.name] = self._make_part(f, self._place(p, self._build_loft(p)))
         elif kind == "fastener":
             self.parts[f.name] = self._make_part(f, self._place(p, self._build_fastener(p)))
+        elif kind == "step_import":
+            self._build_step_import(f)
         elif kind == "shell":
             self._apply_shell(f)
         elif kind == "fillet_edges":
@@ -688,6 +696,48 @@ class Design:
             self._build_pattern(f)
         elif kind == "mirror":
             self._build_mirror(f)
+
+    def _build_step_import(self, f: Feature) -> None:
+        """Read a STEP file and make one part per solid in it (named after the solid's label in the file, else <feature>_1, _2, ...). The file stays where it is:
+        the design remembers its path, so move or delete the file and the design can no longer rebuild this feature."""
+        from build123d import Shape, import_step
+        p = f.params
+        path = Path(str(p["file"])).expanduser()
+        if not path.is_file():
+            raise DesignError(f"The STEP file '{path}' wasn't found. Put it back at that path, or change this feature's 'file' to where it is now.")
+        try:
+            root = import_step(str(path))
+        except Exception as e:                                                  # a damaged or unsupported file must be a readable message, not a crash
+            raise DesignError(f"Couldn't read the STEP file '{path.name}': {e}") from None
+        found: list[tuple[str, object, object]] = []                            # (label, colour or None, solid)
+
+        def walk(node) -> None:
+            kids = list(getattr(node, "children", None) or [])
+            if type(node).__name__ == "Solid" or not kids:
+                found.extend((getattr(node, "label", "") or "", getattr(node, "color", None), s) for s in ([node] if type(node).__name__ == "Solid" else node.solids()))
+                return
+            for k in kids:
+                walk(k)
+        walk(root)
+        if not found:
+            raise DesignError(f"The STEP file '{path.name}' has no solid bodies in it (only surfaces or curves, which satCAD can't use).")
+        if len(found) > 5000:
+            raise DesignError(f"The STEP file '{path.name}' has {len(found)} solid bodies; satCAD imports at most 5000 at a time.")
+        for i, (label, colour, sol) in enumerate(found, 1):
+            base = re.sub(r"[^A-Za-z0-9_-]", "_", label)[:34] or (f.name if len(found) == 1 else f"{f.name}_{i}")
+            name, n = base, 1
+            while name in self.parts or name in self.features:
+                n += 1
+                name = f"{base}_{n}"
+            sol = Shape.cast(sol.wrapped)                                          # detached from the file's compound: a solid that still points at its parent makes every copy take minutes
+            if p["scale"] != 1:
+                sol = sol.scale(float(p["scale"]))
+            part = self._make_part(f, self._place(p, sol), name=name)
+            if colour is not None and not p.get("color"):                         # keep the colour the STEP file carries
+                rgb = tuple(float(c) for c in tuple(colour)[:3])
+                part.color = rgb
+                part.solid.color = Color(*rgb)
+            self.parts[name] = part
 
     def _articulate(self, p: dict, solid):
         """A panel is built from its parent's geometry, so it ignores its assembly's PLACEMENT, but it must still swing with
