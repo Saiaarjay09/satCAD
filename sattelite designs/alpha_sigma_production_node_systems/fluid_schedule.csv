@@ -1,0 +1,157 @@
+loop,stage,id,length_m,inner_diameter_mm,velocity_m_s,reynolds,bends,pressure_drop_pa,volume_l
+Loop A,Pump discharge,discharge_A1,1.02,40.0,0.6605,115949,3,158.813,1.2818
+Loop A,Bypass mixing valve,bypass_valve_A,0.3,40.0,0.6605,115949,0,10000.0,0.377
+Loop A,Valve to cold riser,valve_out_A,1.31,40.0,0.6605,115949,4,208.858,1.6462
+Loop A,Cold riser,cold_riser_A,6.6,40.0,0.6605,115949,0,381.825,8.2938
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_1,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_2,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_3,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_4,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_5,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_6,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_7,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_8,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_9,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_10,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_11,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_12,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_13,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_14,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_15,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_16,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_17,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_18,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_19,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_20,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_21,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_22,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_23,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_24,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_25,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_26,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_27,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_28,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_29,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_30,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_31,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold feeders (32 in parallel),cold_feeder_A_32,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Cold plates,cold_plates_A,0.0,12.0,0.2294,12078,0,20000.0,0.0
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_1,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_2,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_3,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_4,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_5,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_6,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_7,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_8,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_9,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_10,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_11,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_12,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_13,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_14,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_15,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_16,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_17,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_18,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_19,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_20,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_21,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_22,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_23,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_24,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_25,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_26,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_27,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_28,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_29,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_30,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_31,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot feeders (32 in parallel),hot_feeder_A_32,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop A,Hot riser,hot_riser_A,6.6,40.0,0.6605,115949,0,381.825,8.2938
+Loop A,Hot line to radiator,hot_line_A,2.2,40.0,0.3303,57975,2,53.467,2.7646
+Loop A,Hot line to radiator,jumper_hot_A,0.788,40.0,0.3303,57975,1,21.51,0.9902
+Loop A,"Hot radiator tubes (12 in parallel, 4 panels)",tubes_hot_A,19.966,8.4,1.2482,46012,0,24650.322,13.2776
+Loop A,Tip header,tip_A,6.8,40.0,0.6605,115949,0,393.395,8.5451
+Loop A,"Cold radiator tubes (12 in parallel, 4 panels)",tubes_cold_A,19.966,8.4,1.2482,46012,0,24650.322,13.2776
+Loop A,Cold line,jumper_cold_A,0.788,40.0,0.6605,115949,1,78.856,0.9902
+Loop A,Return to accumulator,return_A,4.09,40.0,0.6605,115949,6,436.224,5.1396
+Loop A,Pump suction,suction_A1,2.54,40.0,0.6605,115949,5,313.285,3.1919
+Loop B,Pump discharge,discharge_B1,1.02,40.0,0.6605,115949,3,158.813,1.2818
+Loop B,Bypass mixing valve,bypass_valve_B,0.3,40.0,0.6605,115949,0,10000.0,0.377
+Loop B,Valve to cold riser,valve_out_B,1.41,40.0,0.6605,115949,4,214.644,1.7719
+Loop B,Cold riser,cold_riser_B,6.6,40.0,0.6605,115949,0,381.825,8.2938
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_1,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_2,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_3,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_4,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_5,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_6,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_7,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_8,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_9,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_10,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_11,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_12,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_13,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_14,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_15,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_16,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_17,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_18,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_19,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_20,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_21,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_22,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_23,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_24,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_25,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_26,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_27,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_28,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_29,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_30,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_31,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold feeders (32 in parallel),cold_feeder_B_32,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Cold plates,cold_plates_B,0.0,12.0,0.2294,12078,0,20000.0,0.0
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_1,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_2,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_3,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_4,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_5,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_6,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_7,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_8,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_9,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_10,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_11,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_12,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_13,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_14,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_15,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_16,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_17,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_18,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_19,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_20,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_21,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_22,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_23,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_24,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_25,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_26,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_27,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_28,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_29,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_30,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_31,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot feeders (32 in parallel),hot_feeder_B_32,0.5775,10.0,0.3303,14494,0,53.905,0.0454
+Loop B,Hot riser,hot_riser_B,6.6,40.0,0.6605,115949,0,381.825,8.2938
+Loop B,Hot line to radiator,hot_line_B,2.2,40.0,0.3303,57975,2,53.467,2.7646
+Loop B,Hot line to radiator,jumper_hot_B,0.788,40.0,0.3303,57975,1,21.51,0.9902
+Loop B,"Hot radiator tubes (12 in parallel, 4 panels)",tubes_hot_B,19.966,8.4,1.2482,46012,0,24650.322,13.2776
+Loop B,Tip header,tip_B,6.8,40.0,0.6605,115949,0,393.395,8.5451
+Loop B,"Cold radiator tubes (12 in parallel, 4 panels)",tubes_cold_B,19.966,8.4,1.2482,46012,0,24650.322,13.2776
+Loop B,Cold line,jumper_cold_B,0.788,40.0,0.6605,115949,1,78.856,0.9902
+Loop B,Return to accumulator,return_B,4.09,40.0,0.6605,115949,6,436.224,5.1396
+Loop B,Pump suction,suction_B1,2.54,40.0,0.6605,115949,5,313.285,3.1919

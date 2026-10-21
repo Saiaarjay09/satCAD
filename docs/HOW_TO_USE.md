@@ -311,6 +311,19 @@ What you see once satSTK is playing:
 
 The packet format and the angle conventions are in [TELEMETRY_PROTOCOL.md](TELEMETRY_PROTOCOL.md).
 
+### 6e. Alpha-Sigma: the full-scale datacentre that folds up
+
+**`alpha_sigma_production_node.json`** (same folder) is a 1:1 orbital AI datacentre: 32 server racks, two folding radiator wings, two accordion solar arrays and the three wiring / coolant /
+fibre networks. It is a big file (2,446 bodies), so give it a moment to open.
+
+1. **Home -> Open**, pick `alpha_sigma_production_node.json`.
+2. Click an empty spot (so nothing is selected). The **Property Editor** shows a **deployment ratio** slider. Drag it to 0 and the wings fold up for launch; drag it to 1 and they unfold in orbit.
+3. The **View** tab has four one-click presets: **1 Full** (deployed, everything on), **2 Stowed** (folded for launch), **3 Schematics** (only the cables, tubes and fibres) and **4 X-Ray** (the hull
+   and racks ghosted so you can see the networks inside). **Systems -> Outside** hides or shows the wings, laser turrets and beacons.
+4. **Systems -> Wiring / Cooling / Optical** open the drawings, exactly as in section 6c.
+
+To rebuild it yourself (about a minute): `python3 "sattelite designs/alpha_sigma_production_node.py"`. The README section "Alpha-Sigma Production Architecture" lists every dimension and the honest limits.
+
 ---
 
 ## 7. Motion Studio: making things move

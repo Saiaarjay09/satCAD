@@ -47,7 +47,8 @@ def find_hull(design) -> str:
     if "bus_hull" in design.parts:
         return "bus_hull"
     best, best_vol = None, 0.0
-    for name, p in design.parts.items():
+    named = [n for n in design.parts if n.lower().endswith("hull")]
+    for name, p in ((n, design.parts[n]) for n in (named or design.parts)):
         lo, hi = (_pt(v) for v in p.bbox())
         box = float(np.prod(hi - lo))
         if box > best_vol and p.volume_mm3 < 0.5 * box:
@@ -111,17 +112,16 @@ def _search(boxes, start, goal, s0, g0, s_dir, g_dir, container, radius, clearan
         for tag, a, b, p in (("start", start, s0, s0), ("end", goal, g0, g0)):
             if name not in endpoint_parts and _segment_hits_box(a, b, lo2, hi2):
                 raise RouteError(f"{label}: {name} blocks the {tag} of the run, within {np.linalg.norm(b - a):.0f} mm of the port. Move it, or route this run first.")
-        if np.all(lo2 < s0) and np.all(s0 < hi2) or np.all(lo2 < g0) and np.all(g0 < hi2):
-            if name in endpoint_parts:
-                raise RouteError(f"{label}: the port is too close to {name} for the run to leave it ({bend_radius:g} mm bends need room).")
-            continue
+        for tag, p in (("start", s0), ("end", g0)):
+            if np.all(lo2 < p) and np.all(p < hi2):
+                raise RouteError(f"{label}: the {tag} of the run is too close to {name} for the run to leave its port ({bend_radius:g} mm bends need room).")
         if np.any(hi2 <= clo) or np.any(lo2 >= chi):
             continue
-        obs.append((np.maximum(lo2, clo), np.minimum(hi2, chi)))
+        obs.append((np.maximum(lo2, clo), np.minimum(hi2, chi), name))
     coords = []
     for ax in range(3):
         c = {round(float(s0[ax]), 3), round(float(g0[ax]), 3), round(float(clo[ax]), 3), round(float(chi[ax]), 3)}
-        for lo2, hi2 in obs:
+        for lo2, hi2, _n in obs:
             c.add(round(float(lo2[ax]), 3))
             c.add(round(float(hi2[ax]), 3))
         for v in np.arange(clo[ax], chi[ax], spacing):
@@ -129,14 +129,14 @@ def _search(boxes, start, goal, s0, g0, s_dir, g_dir, container, radius, clearan
         arr = np.array(sorted(c))
         keep = [arr[0]]
         for v in arr[1:]:
-            if v - keep[-1] > 0.5:
+            if v - keep[-1] > 0.05:
                 keep.append(v)
         coords.append(np.array(keep))
     n = [len(c) for c in coords]
     node_blocked = np.zeros(n, dtype=bool)
     edge_blocked = [np.zeros(n, dtype=bool) for _ in range(3)]
-    for lo2, hi2 in obs:
-        idx = [(int(np.searchsorted(coords[a], lo2[a] - 1e-3)), int(np.searchsorted(coords[a], hi2[a] - 1e-3))) for a in range(3)]
+    for lo2, hi2, _name in obs:
+        idx = [(int(np.searchsorted(coords[a], lo2[a] - 0.06)), int(np.searchsorted(coords[a], hi2[a] - 0.06))) for a in range(3)]    # lines within 0.05 mm were merged
         (i0, i1), (j0, j1), (k0, k1) = idx
         if i1 <= i0 or j1 <= j0 or k1 <= k0:
             continue
@@ -231,6 +231,10 @@ def _search(boxes, start, goal, s0, g0, s_dir, g_dir, container, radius, clearan
     if g_dir is not None:
         pts.append([float(v) for v in goal])
     pts = _simplify([[round(v, 3) for v in p] for p in pts])
+    for a, b in zip(pts, pts[1:]):                                                      # a last safety net: the finished path must not enter any clearance zone
+        for lo2, hi2, name in obs:
+            if name not in endpoint_parts and _segment_hits_box(_pt(a), _pt(b), lo2 + 0.2, hi2 - 0.2):
+                raise RouteError(f"{label}: internal check failed: the path enters the clearance zone of {name} (segment {np.round(a, 1).tolist()} to {np.round(b, 1).tolist()}, zone {np.round(lo2, 1).tolist()} to {np.round(hi2, 1).tolist()}).")
     return pts
 
 
@@ -300,7 +304,7 @@ def link_geometry(systems: Systems, l: dict) -> tuple[float, float, float]:
         r = float(l.get("conduit_od_mm", 12)) / 2
         return r, float(l.get("clearance_mm", 20)), float(l.get("bend_radius_mm", max(40.0, 3 * r)))
     from .systems import wire_outer_diameter_mm
-    r = wire_outer_diameter_mm(l["awg"]) / 2 if l.get("awg") else 6.0
+    r = float(l["od_mm"]) / 2 if l.get("od_mm") else wire_outer_diameter_mm(l["awg"]) / 2 if l.get("awg") else 6.0
     return r, float(l.get("clearance_mm", 30)), float(l.get("bend_radius_mm", max(5 * 2 * r, 30)))
 
 
@@ -314,6 +318,7 @@ def autoroute(design, systems: Systems, link_ids=None, hull: str | None = None, 
     ids.sort(key=lambda i: -link_geometry(systems, systems.links[i])[0])                     # fat tubes first: thin cables are easier to fit around them
     for lid in ids:
         systems.links[lid]["route"] = None
+    all_boxes = part_boxes(design, set(own), container)                     # one pass over the model, not one per run
     for lid in ids:
         l = systems.links[lid]
         radius, clearance, bend = link_geometry(systems, l)
@@ -324,7 +329,7 @@ def autoroute(design, systems: Systems, link_ids=None, hull: str | None = None, 
         for end in (l["a"], l["b"]):
             comp, port = systems._endpoint(end)
             endpoint_parts |= {p for p in (systems.components[comp].get("part"), systems.components[comp]["ports"][port].get("part")) if p}
-        boxes = part_boxes(design, set(own), container)
+        boxes = all_boxes
         extra = []
         for other_id, pts in done:
             o = systems.links[other_id]
@@ -361,7 +366,7 @@ def materialize(design, systems: Systems) -> list[str]:
                 kw.update(radius=radius, material="generic_equipment", color=_color(l, True))
             else:
                 from .systems import awg_info
-                kw.update(radius=awg_info(l["awg"])[0] / 2, material="copper", color=_color(l, True))
+                kw.update(radius=float(l["od_mm"]) / 2 if l.get("od_mm") else awg_info(l["awg"])[0] / 2, material="copper", color=_color(l, True))
             if l.get("assembly"):
                 kw["assembly"] = l["assembly"]
             design.add("sweep", name, **kw)

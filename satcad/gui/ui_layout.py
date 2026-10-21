@@ -115,6 +115,7 @@ class MainWindow(QMainWindow):
 
         # ---- Motion Studio docks (hidden until used) ----------------------------------------------------------------------------------------
         self.motion = MotionStudio(self.session, self.viewport) if hasattr(self.viewport, "bind_motion_groups") else None
+        self.right.properties.set_motion(self.motion)
         self.twin = DigitalTwin(self) if hasattr(self.viewport, "set_hud") else None            # Live Digital Twin Sync (satSTK telemetry)
         self.motion_dock = self.timeline_dock = None
         if self.motion is not None:
@@ -142,7 +143,7 @@ class MainWindow(QMainWindow):
         self._fit_next = True
         self.picked_face = None                                # (body name, face info) after a click in Face mode
         self.xray = False
-        self.layers_on = {"power": True, "optical": True, "fluid": True, "shell": True}
+        self.layers_on = {"power": True, "optical": True, "fluid": True, "shell": True, "external": True}
         self._refresh_all()
         self._update_title()
 
@@ -235,7 +236,8 @@ class MainWindow(QMainWindow):
         g.add_button("Schedules", "sys_table", c.systems_export, "Write every drawing and the CSV cut lists (wires, tubes, fibres) into the designs folder")
         g = sy.add_group("Show")
         self._layer_buttons = {}
-        for key, label, ic in (("power", "Power", "sys_wire"), ("optical", "Optical", "sys_fibre"), ("fluid", "Cooling", "sys_pipe"), ("shell", "Shell", "block")):
+        for key, label, ic in (("power", "Power", "sys_wire"), ("optical", "Optical", "sys_fibre"), ("fluid", "Cooling", "sys_pipe"), ("shell", "Shell", "block"),
+                                ("external", "Outside", "assembly")):
             self._layer_buttons[key] = g.add_button(label, ic, lambda _=False, k=key: self.set_layer_visible(k, self._layer_buttons[k].isChecked()),
                                                     f"Show or hide everything on the '{key}' layer", checkable=True)
             self._layer_buttons[key].setChecked(True)
@@ -250,6 +252,12 @@ class MainWindow(QMainWindow):
         self.xray_button = g.add_button("X-Ray", "wire", lambda: self.set_xray(not self.xray), "See through the hull, server trays and radiator skins (85% transparent) so the "
                                                                                                 "power, optical and fluid schematics show at full opacity. Needs parts on the 'shell' layer.", checkable=True)
         g.add_button("Show All", "shaded", self.show_all_parts, "Show every part again (after hiding assemblies or parts)")
+        g = view.add_group("Presets")
+        for n, (label, tip) in enumerate((("1 Full", "Full production satellite: everything shown, solid, deployed (DEPLOYMENT_RATIO 1)"),
+                                          ("2 Stowed", "Stowed launch configuration: radiators and solar arrays folded (DEPLOYMENT_RATIO 0), structure only"),
+                                          ("3 Schematics", "Internal schematics only: wiring, coolant linings and optical fibre"),
+                                          ("4 X-Ray", "X-ray ghost hull plus the active diagrams (wiring, coolant, optical)")), start=1):
+            g.add_button(label, "wire", lambda _=False, k=n: self.apply_preset(k), tip)
         g = view.add_group("Display")
         g.add_button("Shaded + Edges", "shaded", lambda: self.viewport.set_mode("shaded_edges"))
         g.add_button("Shaded", "shaded", lambda: self.viewport.set_mode("shaded"))
@@ -413,6 +421,30 @@ class MainWindow(QMainWindow):
                                               "(designs such as the heavy orbital node already do this).")
         else:
             self.session.message.emit("info", "X-Ray on: shell parts are 85% transparent, everything else is solid." if self.xray else "X-Ray off.")
+
+    def apply_preset(self, n: int) -> None:
+        """One-click view presets. 1 full production satellite, 2 stowed launch configuration, 3 internal schematics only, 4 x-ray ghost hull with the diagrams."""
+        schem = ("power", "optical", "fluid")
+        want = {1: dict(on=set(self.layers_on), xray=False, ratio=1.0), 2: dict(on={"shell", "external"}, xray=False, ratio=0.0),
+                3: dict(on=set(schem), xray=False, ratio=None), 4: dict(on=set(schem) | {"shell"}, xray=True, ratio=None)}.get(n)
+        if want is None:
+            return
+        self.navigator.show_all()
+        for key in self.layers_on:
+            self.layers_on[key] = key in want["on"]
+            if key in getattr(self, "_layer_buttons", {}):
+                self._layer_buttons[key].setChecked(key in want["on"])
+        self.set_xray(want["xray"])
+        m = self.motion
+        if want["ratio"] is not None:
+            if m is not None and "DEPLOYMENT_RATIO" in m.engine.param_values:
+                m.set_parameter("DEPLOYMENT_RATIO", want["ratio"])
+            else:
+                self.session.message.emit("info", "This design has no DEPLOYMENT_RATIO, so only the layers changed.")
+        self._apply_hidden()
+        self.viewport.fit()
+        self.session.message.emit("info", {1: "Preset 1: full production satellite.", 2: "Preset 2: stowed launch configuration.", 3: "Preset 3: internal schematics only.",
+                                           4: "Preset 4: x-ray ghost hull with the active diagrams."}[n])
 
     def show_all_parts(self) -> None:
         for key in self.layers_on:

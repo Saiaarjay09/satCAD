@@ -8,7 +8,7 @@ import json
 import re
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QTableWidget,
+from PySide6.QtWidgets import (QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSlider, QTableWidget,
                                QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget)
 
 from ..engine import REQ, SCHEMAS
@@ -98,8 +98,17 @@ class PropertyEditor(QWidget):
         self._layout.addWidget(scroll)
         self._form_box = QVBoxLayout(self._body)
         self._form_box.setAlignment(Qt.AlignTop)
+        self.motion = None
+        self._motion_widgets: dict[str, tuple] = {}
         session.selection_changed.connect(lambda _=None: self.refresh())
         session.changed.connect(self.refresh)
+        self.refresh()
+
+    def set_motion(self, motion) -> None:
+        """Let the design's exposed Motion Studio parameters (for example DEPLOYMENT_RATIO) appear here as sliders."""
+        self.motion = motion
+        if motion is not None:
+            motion.model_changed.connect(self._sync_motion)
         self.refresh()
 
     # ---- building the form --------------------------------------------------------------------------------------------------------
@@ -230,7 +239,57 @@ class PropertyEditor(QWidget):
             form.addRow(k, QLabel(v))
         self._form_box.addWidget(box)
         self._model_parameters()
+        self._motion_parameters()
         self._form_box.addStretch(1)
+
+    def _motion_parameters(self) -> None:
+        """Sliders for the Motion Studio parameters the design exposes: drag one and the model moves at once (no rebuild)."""
+        self._motion_widgets = {}
+        m = self.motion
+        if m is None or not m.exposed:
+            return
+        box = QGroupBox("Motion parameters")
+        form = QFormLayout(box)
+        for name in m.exposed:
+            lo, hi = m.engine.param_ranges.get(name) or (0.0, 1.0)
+            if hi <= lo:
+                hi = lo + 1.0
+            slider = QSlider(Qt.Horizontal)
+            slider.setRange(0, 1000)
+            value = QLabel()
+            value.setMinimumWidth(56)
+            self._motion_widgets[name] = (slider, value, lo, hi)
+            slider.setValue(round(1000 * (m.engine.get_param(name) - lo) / (hi - lo)))
+            value.setText(f"{m.engine.get_param(name):.3g}")
+            slider.valueChanged.connect(lambda v, n=name: self._motion_slider_moved(n, v))
+            row = QHBoxLayout()
+            row.addWidget(slider, 1)
+            row.addWidget(value)
+            form.addRow(QLabel(name.replace("_", " ").lower()), row)
+        self._form_box.addWidget(box)
+        hint = QLabel("Drag a slider and the model moves.")
+        hint.setStyleSheet("color:#9aa2ad")
+        self._form_box.addWidget(hint)
+
+    def _motion_slider_moved(self, name: str, position: int) -> None:
+        slider, label, lo, hi = self._motion_widgets[name]
+        v = lo + (hi - lo) * position / 1000.0
+        label.setText(f"{v:.3g}")
+        self.motion.set_parameter(name, v)
+
+    def _sync_motion(self) -> None:
+        """Motion Studio changed something: move the sliders to match (or rebuild them when the exposed list changed), without feeding back."""
+        if self.motion is None or self.session.selected in self.session.design.features:
+            return
+        if set(self._motion_widgets) != set(self.motion.exposed):
+            self.refresh()
+            return
+        for name, (slider, label, lo, hi) in self._motion_widgets.items():
+            v = self.motion.engine.get_param(name)
+            slider.blockSignals(True)
+            slider.setValue(round(1000 * (v - lo) / (hi - lo)))
+            slider.blockSignals(False)
+            label.setText(f"{v:.3g}")
 
     def _model_parameters(self) -> None:
         """The model's headline parameters (the UPPER_CASE variables): edit one and the whole assembly rebuilds."""

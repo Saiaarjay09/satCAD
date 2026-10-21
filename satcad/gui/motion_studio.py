@@ -31,6 +31,7 @@ class MotionStudio(QObject):
         self.pulses: list[ColorPulse] = []
         self.t, self.t_max, self.speed, self.loop = 0.0, 5400.0, 1.0, True
         self.playing = False
+        self.exposed: list[str] = []                 # parameter names shown as sliders in the Property Editor (a design can expose its key motion parameters)
         self.suspended = False                       # the Digital Twin owns the moving groups and colours while this is True
         self._last = 0.0
         self.fps = 0.0
@@ -79,7 +80,7 @@ class MotionStudio(QObject):
 
     def clear(self) -> None:
         self.pause()
-        self.joints, self.pulses = [], []
+        self.joints, self.pulses, self.exposed = [], [], []
         self.solver = KinematicsSolver()
         self.engine.set_equations([])
         self.t = 0.0
@@ -250,14 +251,17 @@ class MotionStudio(QObject):
 
     # ---- saving --------------------------------------------------------------------------------------------------------------------
     def to_dict(self) -> dict:
-        return dict(engine=self.engine.to_dict(), joints=[j.to_dict() for j in self.joints], pulses=[p.to_dict() for p in self.pulses],
-                    t_max=self.t_max)
+        out = dict(engine=self.engine.to_dict(), joints=[j.to_dict() for j in self.joints], pulses=[p.to_dict() for p in self.pulses], t_max=self.t_max)
+        if self.exposed:
+            out["expose"] = list(self.exposed)
+        return out
 
     def load_dict(self, d: dict) -> None:
         self.engine.load_dict(d.get("engine") or {})
         self.t_max = float(d.get("t_max", 5400.0))
         self.joints = [Joint.from_dict(j) for j in d.get("joints", [])]
         self.pulses = [ColorPulse.from_dict(p) for p in d.get("pulses", [])]
+        self.exposed = [str(n) for n in d.get("expose", []) if isinstance(n, str)]
         self.solver = KinematicsSolver(self.joints, self.session.design)
         self._bind()
         self.seek(0.0)

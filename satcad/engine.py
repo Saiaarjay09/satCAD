@@ -93,7 +93,7 @@ SCHEMAS: dict[str, dict] = {
     "cutout": {"target": REQ, "side": REQ, "shape": REQ, "width": None, "height": None, "diameter": None,
                "depth": 0.0, "offset_u": 0.0, "offset_v": 0.0},
     "pattern": {"source": REQ, "mode": REQ, "count": REQ, "dx": 0.0, "dy": 0.0, "dz": 0.0, "axis": "z",
-                "cx": 0.0, "cy": 0.0, "cz": 0.0, "total_angle": 360.0, "assembly": None},
+                "cx": 0.0, "cy": 0.0, "cz": 0.0, "total_angle": 360.0, "assembly": None, "grid": None},
     "mirror": {"source": REQ, "plane": REQ, "offset": 0.0, "assembly": None},
     "boolean": {"operation": REQ, "target": REQ, "tool": REQ},
     "assembly": {"parent": None, "x": 0.0, "y": 0.0, "z": 0.0, "rx": 0.0, "ry": 0.0, "rz": 0.0,
@@ -415,14 +415,26 @@ class Design:
                 raise DesignError("A cutout's shape must be 'rect' or 'circle'.")
             if not isinstance(full["depth"], (int, float)) or full["depth"] < 0:
                 raise DesignError("'depth' must be 0 (cut all the way through) or a positive number.")
-        if kind == "pattern":
+        if kind == "pattern" and full["mode"] == "grid":
+            g = full["grid"]
+            if not isinstance(g, (list, tuple)) or not 1 <= len(g) <= 4 or any(
+                    not isinstance(a, (list, tuple)) or len(a) != 4 or not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in a) for a in g):
+                raise DesignError("A grid pattern needs 'grid': one to four steps, each [dx, dy, dz, count], e.g. [[400, 0, 0, 6], [0, 450, 0, 4]] for 6 by 4 copies.")
+            counts = [int(a[3]) for a in g]
+            if any(c < 1 or c != a[3] for c, a in zip(counts, g)) or any(not any(a[:3]) for a, c in zip(g, counts) if c > 1):
+                raise DesignError("Each grid step needs a whole-number count of at least 1 and, when the count is above 1, a spacing in dx, dy and/or dz.")
+            total = int(np.prod(counts))
+            if not 2 <= total <= 5000:
+                raise DesignError(f"A grid pattern makes {total} copies; it must be between 2 and 5000.")
+            full["count"] = total
+        elif kind == "pattern":
             n = full["count"]
             if isinstance(n, float) and n.is_integer():
                 n = full["count"] = int(n)
             if not isinstance(n, int) or isinstance(n, bool) or not 2 <= n <= 500:
                 raise DesignError("A pattern's 'count' must be a whole number from 2 to 500.")
-            if full["mode"] not in ("linear", "circular"):
-                raise DesignError("A pattern's mode must be 'linear' or 'circular'.")
+            if full["mode"] not in ("linear", "circular", "grid"):
+                raise DesignError("A pattern's mode must be 'linear', 'circular' or 'grid'.")
             if full["mode"] == "linear" and not any(full[k] for k in ("dx", "dy", "dz")):
                 raise DesignError("A linear pattern needs a spacing: set dx, dy and/or dz (mm between copies).")
             if full["axis"] not in AXES:
@@ -1020,9 +1032,30 @@ class Design:
         return replace(src, name=name, solid=solid, equipment=fn(src.equipment) if src.equipment is not None else None,
                        params=dict(src.params))
 
+    def _build_grid_pattern(self, f: Feature, src: Part) -> None:
+        """A grid pattern: up to four steps [dx, dy, dz, count]; the first step varies fastest. Copy k (2 and up) is named <pattern>_<k>."""
+        steps = [(float(a[0]), float(a[1]), float(a[2]), int(a[3])) for a in f.params["grid"]]
+        k = 0
+        for index in np.ndindex(*[c for *_, c in reversed(steps)]):
+            idx = tuple(reversed(index))                                         # first step fastest
+            off = tuple(sum(i * st[axis] for i, st in zip(idx, steps)) for axis in range(3))
+            k += 1
+            if k == 1:
+                continue                                                         # the source itself is copy 1
+            name = f"{f.name}_{k}"
+            if name in self.features or name in self.parts:
+                raise DesignError(f"The pattern would create a part called '{name}', which already exists. Rename the pattern.")
+            self.parts[name] = self._derive(src, name, lambda s, off=off: s.moved(Location(off)))
+            self.parts[name].assembly = f.params.get("assembly") or src.assembly
+            self.parts[name].translated_from = src.name
+            self.parts[name].translation = off
+
     def _build_pattern(self, f: Feature) -> None:
         p = f.params
         src = self._target(p["source"], "source part")
+        if p["mode"] == "grid":
+            self._build_grid_pattern(f, src)
+            return
         n = p["count"]
         direction = [0.0, 0.0, 0.0]
         direction[AXES[p["axis"]]] = 1.0

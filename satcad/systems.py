@@ -191,7 +191,8 @@ class Systems:
         if isinstance(anchor, str):
             anchor = {"at": anchor}
         anchor = dict(anchor or {"at": "center"})
-        anchor.setdefault("part", c.get("part"))
+        if "point" not in anchor:
+            anchor.setdefault("part", c.get("part"))
         c["ports"][name] = anchor
 
     def link(self, id: str, domain: str, a: str, b: str, part: str | None = None, route: list | None = None, auto: bool = False, bundle: str | None = None,
@@ -277,6 +278,8 @@ class Systems:
     # ---- geometry: ports, routes ---------------------------------------------------------------------------------------------
     @staticmethod
     def anchor_point(design, anchor: dict) -> list[float]:
+        if anchor.get("point") is not None:                                      # an absolute position (a through-wall connector, the end of a swept pipe)
+            return [round(float(v) + float(o), 3) for v, o in zip(anchor["point"], anchor.get("offset", [0, 0, 0]))]
         part = anchor.get("part")
         if part not in design.parts:
             raise SystemsError(f"The model has no part '{part}'.")
@@ -401,7 +404,7 @@ class Systems:
                         gauge=f"bar {w:g} x {t:g} mm")
         d, area, mohm = awg_info(l["awg"])
         cut = length_m * (1 + a["wire_slack_pct"] / 100.0) + 2 * a["wire_slack_mm_per_end"] / 1000.0
-        od = wire_outer_diameter_mm(l["awg"])
+        od = float(l.get("od_mm") or wire_outer_diameter_mm(l["awg"]))                      # a heavily insulated or shielded cable can be larger than its gauge says
         mass = (area * 1e-6 * COPPER_DENSITY + math.pi / 4 * ((od / 1000) ** 2 - (d / 1000) ** 2) * INSULATION_DENSITY) * cut
         return dict(kind=kind, length_m=length_m, cut_length_m=cut, area_mm2=area, r_ohm=mohm / 1000.0 * length_m, mass_kg=mass, od_mm=od, gauge=f"AWG {l['awg']}")
 
@@ -437,8 +440,14 @@ class Systems:
             else:
                 modes[mode] = dict(currents={}, node_v={}, source_count=0)
                 continue
-            ref = index[port_of[active[0]][0]]
             G = np.zeros((len(nodes), len(nodes)))
+            parent = list(range(len(nodes)))
+
+            def find(i):
+                while parent[i] != i:
+                    parent[i] = parent[parent[i]]
+                    i = parent[i]
+                return i
             for l in links:
                 r = max(elec[l["id"]]["r_ohm"], 1e-7)
                 i, j = index[l["a"]], index[l["b"]]
@@ -446,12 +455,25 @@ class Systems:
                 G[j, j] += 1 / r
                 G[i, j] -= 1 / r
                 G[j, i] -= 1 / r
-            keep = [k for k in range(len(nodes)) if k != ref]
+                parent[find(i)] = find(j)
             v = np.zeros(len(nodes))
-            try:
-                v[keep] = np.linalg.solve(G[np.ix_(keep, keep)], inj[keep])
-            except np.linalg.LinAlgError:
-                raise SystemsError("The power network is not fully connected: some component has no path to the source. Check for missing links.") from None
+            islands: dict[int, list[int]] = {}
+            for k in range(len(nodes)):
+                islands.setdefault(find(k), []).append(k)
+            source_nodes = {index[port_of[n][0]] for n in active}
+            refs = []
+            for members in islands.values():                                   # every separate network is solved on its own, grounded at its first source
+                if abs(float(sum(inj[k] for k in members))) > 1e-6:
+                    raise SystemsError("Some part of the power network supplies a different current than it draws (a source and its loads sit on separate networks). Connect them, or balance them.")
+                ref = next((k for k in members if k in source_nodes), members[0])
+                keep = [k for k in members if k != ref]
+                if keep:
+                    try:
+                        v[keep] = np.linalg.solve(G[np.ix_(keep, keep)], inj[keep])
+                    except np.linalg.LinAlgError:
+                        raise SystemsError("The power network is not fully connected: some component has no path to the source. Check for missing links.") from None
+                refs.append(ref)
+            ref = refs[0]
             currents = {l["id"]: float((v[index[l["a"]]] - v[index[l["b"]]]) / max(elec[l["id"]]["r_ohm"], 1e-7)) for l in links}
             modes[mode] = dict(currents=currents, node_v={n: float(v[index[n]]) for n in nodes}, source_count=len(active), ref=nodes[ref])
         rows, mass = [], 0.0
@@ -723,6 +745,8 @@ class Systems:
             return float(l.get("conduit_od_mm", 12)) / 2
         if l.get("kind") == "bar":
             return max(l["bar_mm"]) / 2
+        if l.get("od_mm"):
+            return float(l["od_mm"]) / 2
         return wire_outer_diameter_mm(l["awg"]) / 2 if l.get("awg") else 5.0
 
     # ---- reports ---------------------------------------------------------------------------------------------------------------

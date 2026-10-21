@@ -1,0 +1,103 @@
+id,from,to,type,colour,length_m,cut_length_m,current_a,drop_v,mass_kg,bundle
+cable_battery_1,battery_1.BUS,busbar_1.bat1,AWG 4,orange,1.3805,1.5019,30.975,0.06972,0.8791,Battery feeds
+cable_battery_2,battery_2.BUS,busbar_1.bat2,AWG 4,orange,1.8645,2.0004,30.975,0.09416,1.1709,Battery feeds
+cable_battery_3,battery_3.BUS,busbar_3.bat3,AWG 4,orange,2.1675,2.3125,30.975,0.10946,1.3535,Battery feeds
+cable_battery_4,battery_4.BUS,busbar_3.bat4,AWG 4,orange,1.2555,1.3732,30.975,0.0634,0.8037,Battery feeds
+cable_battery_5,battery_5.BUS,busbar_2.bat5,AWG 4,orange,1.2515,1.369,30.975,0.0632,0.8013,Battery feeds
+cable_battery_6,battery_6.BUS,busbar_2.bat6,AWG 4,orange,1.8275,1.9623,30.975,0.09229,1.1485,Battery feeds
+cable_battery_7,battery_7.BUS,busbar_4.bat7,AWG 4,orange,1.9275,2.0653,30.975,0.09734,1.2088,Battery feeds
+cable_battery_8,battery_8.BUS,busbar_4.bat8,AWG 4,orange,1.1075,1.2207,30.975,0.05593,0.7145,Battery feeds
+bcdu_1_internal,bcdu_1.OUT_L,bcdu_1.OUT_R,bolted joint,,0.0,0.0,61.5,0.00615,0.0,
+bcdu_2_internal,bcdu_2.OUT_L,bcdu_2.OUT_R,bolted joint,,0.0,0.0,61.5,0.00615,0.0,
+cable_bcdu_1_L,bcdu_1.OUT_L,busbar_2.bcdu_1_L,AWG 2,orange,2.0525,2.1941,62.4,0.13133,1.4693,BCDU feeds
+cable_bcdu_1_R,bcdu_1.OUT_R,busbar_4.bcdu_1_R,AWG 2,orange,1.9725,2.1117,61.5,0.12439,1.4141,BCDU feeds
+cable_bcdu_2_L,bcdu_2.OUT_L,busbar_1.bcdu_2_L,AWG 2,orange,1.9725,2.1117,62.4,0.12621,1.4141,BCDU feeds
+cable_bcdu_2_R,bcdu_2.OUT_R,busbar_3.bcdu_2_R,AWG 2,orange,2.0525,2.1941,61.5,0.12943,1.4693,BCDU feeds
+cable_tray_1,busbar_1.t1,tray_1.P,AWG 8,orange,1.5255,1.6513,7.5,0.04716,0.8239,"Tray power, busbar 1"
+cable_tray_2,busbar_2.t2,tray_2.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_3,busbar_3.t3,tray_3.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_4,busbar_4.t4,tray_4.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_tray_5,busbar_1.t5,tray_5.P,AWG 8,orange,1.6535,1.7831,7.5,0.05112,0.8896,"Tray power, busbar 1"
+cable_tray_6,busbar_2.t6,tray_6.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_7,busbar_3.t7,tray_7.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_8,busbar_4.t8,tray_8.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_tray_9,busbar_1.t9,tray_9.P,AWG 8,orange,1.6535,1.7831,7.5,0.05112,0.8896,"Tray power, busbar 1"
+cable_tray_10,busbar_2.t10,tray_10.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_11,busbar_3.t11,tray_11.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_12,busbar_4.t12,tray_12.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_tray_13,busbar_1.t13,tray_13.P,AWG 8,orange,1.6535,1.7831,7.5,0.05112,0.8896,"Tray power, busbar 1"
+cable_tray_14,busbar_2.t14,tray_14.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_15,busbar_3.t15,tray_15.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_16,busbar_4.t16,tray_16.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_tray_17,busbar_1.t17,tray_17.P,AWG 8,orange,1.5335,1.6595,7.5,0.04741,0.828,"Tray power, busbar 1"
+cable_tray_18,busbar_2.t18,tray_18.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_19,busbar_3.t19,tray_19.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_20,busbar_4.t20,tray_20.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_tray_21,busbar_1.t21,tray_21.P,AWG 8,orange,1.6535,1.7831,7.5,0.05112,0.8896,"Tray power, busbar 1"
+cable_tray_22,busbar_2.t22,tray_22.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_23,busbar_3.t23,tray_23.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_24,busbar_4.t24,tray_24.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_tray_25,busbar_1.t25,tray_25.P,AWG 8,orange,1.6535,1.7831,7.5,0.05112,0.8896,"Tray power, busbar 1"
+cable_tray_26,busbar_2.t26,tray_26.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_27,busbar_3.t27,tray_27.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_28,busbar_4.t28,tray_28.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_tray_29,busbar_1.t29,tray_29.P,AWG 8,orange,1.6535,1.7831,7.5,0.05112,0.8896,"Tray power, busbar 1"
+cable_tray_30,busbar_2.t30,tray_30.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 2"
+cable_tray_31,busbar_3.t31,tray_31.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 3"
+cable_tray_32,busbar_4.t32,tray_32.P,AWG 8,orange,1.1925,1.3083,7.5,0.03687,0.6527,"Tray power, busbar 4"
+cable_pump_A1,busbar_4.tap_pump_A1,pump_A1.V,AWG 14,orange,2.1925,2.3383,1.5,0.0545,0.4369,Power to pumps
+cable_pump_A2,busbar_4.tap_pump_A2,pump_A2.V,AWG 14,orange,1.6925,1.8233,0.0,0.0,0.3407,Power to pumps
+cable_pump_B1,busbar_3.tap_pump_B1,pump_B1.V,AWG 14,orange,2.1925,2.3383,1.5,0.0545,0.4369,Power to pumps
+cable_pump_B2,busbar_3.tap_pump_B2,pump_B2.V,AWG 14,orange,1.6925,1.8233,0.0,0.0,0.3407,Power to pumps
+cable_turret_fwd_a,busbar_2.tap_turret_fwd_a,turret_fwd_a.V,AWG 12,orange,1.4125,1.5349,1.2,0.01767,0.2996,Power to turrets
+cable_turret_fwd_b,busbar_1.tap_turret_fwd_b,turret_fwd_b.V,AWG 12,orange,1.4125,1.5349,1.2,0.01767,0.2996,Power to turrets
+cable_turret_aft_a,busbar_2.tap_turret_aft_a,turret_aft_a.V,AWG 12,orange,1.6125,1.7409,1.2,0.02017,0.3398,Power to turrets
+cable_turret_aft_b,busbar_1.tap_turret_aft_b,turret_aft_b.V,AWG 12,orange,1.8185,1.9531,1.2,0.02274,0.3812,Power to turrets
+busbar_1/seg1,busbar_1.bat2,busbar_1.bat1,bar 60 x 15 mm,,0.1,0.1,30.975,0.00012,0.8064,
+busbar_1/seg2,busbar_1.bat1,busbar_1.tap_turret_aft_b,bar 60 x 15 mm,,0.1,0.1,61.95,0.00024,0.8064,
+busbar_1/seg3,busbar_1.tap_turret_aft_b,busbar_1.t1,bar 60 x 15 mm,,0.1125,0.1125,60.75,0.00026,0.9072,
+busbar_1/seg4,busbar_1.t1,busbar_1.t5,bar 60 x 15 mm,,0.74,0.74,53.25,0.00151,5.9674,
+busbar_1/seg5,busbar_1.t5,busbar_1.t9,bar 60 x 15 mm,,0.74,0.74,45.75,0.0013,5.9674,
+busbar_1/seg6,busbar_1.t9,busbar_1.t13,bar 60 x 15 mm,,0.74,0.74,38.25,0.00108,5.9674,
+busbar_1/seg7,busbar_1.t13,busbar_1.bcdu_2_L,bar 60 x 15 mm,,0.8875,0.8875,31.2,0.00106,7.1568,
+busbar_1/seg8,busbar_1.bcdu_2_L,busbar_1.t17,bar 60 x 15 mm,,0.2925,0.2925,31.2,0.00035,2.3587,
+busbar_1/seg9,busbar_1.t17,busbar_1.t21,bar 60 x 15 mm,,0.74,0.74,23.7,0.00067,5.9674,
+busbar_1/seg10,busbar_1.t21,busbar_1.t25,bar 60 x 15 mm,,0.74,0.74,16.2,0.00046,5.9674,
+busbar_1/seg11,busbar_1.t25,busbar_1.t29,bar 60 x 15 mm,,0.74,0.74,8.7,0.00025,5.9674,
+busbar_1/seg12,busbar_1.t29,busbar_1.tap_turret_fwd_b,bar 60 x 15 mm,,0.8675,0.8675,1.2,4e-05,6.9955,
+busbar_2/seg1,busbar_2.bat6,busbar_2.bat5,bar 60 x 15 mm,,0.1,0.1,30.975,0.00012,0.8064,
+busbar_2/seg2,busbar_2.bat5,busbar_2.tap_turret_aft_a,bar 60 x 15 mm,,0.1,0.1,61.95,0.00024,0.8064,
+busbar_2/seg3,busbar_2.tap_turret_aft_a,busbar_2.t2,bar 60 x 15 mm,,0.2975,0.2975,60.75,0.00069,2.399,
+busbar_2/seg4,busbar_2.t2,busbar_2.t6,bar 60 x 15 mm,,0.74,0.74,53.25,0.00151,5.9674,
+busbar_2/seg5,busbar_2.t6,busbar_2.t10,bar 60 x 15 mm,,0.74,0.74,45.75,0.0013,5.9674,
+busbar_2/seg6,busbar_2.t10,busbar_2.t14,bar 60 x 15 mm,,0.74,0.74,38.25,0.00108,5.9674,
+busbar_2/seg7,busbar_2.t14,busbar_2.bcdu_1_L,bar 60 x 15 mm,,0.6225,0.6225,31.2,0.00074,5.0198,
+busbar_2/seg8,busbar_2.bcdu_1_L,busbar_2.t18,bar 60 x 15 mm,,0.5575,0.5575,31.2,0.00067,4.4957,
+busbar_2/seg9,busbar_2.t18,busbar_2.t22,bar 60 x 15 mm,,0.74,0.74,23.7,0.00067,5.9674,
+busbar_2/seg10,busbar_2.t22,busbar_2.t26,bar 60 x 15 mm,,0.74,0.74,16.2,0.00046,5.9674,
+busbar_2/seg11,busbar_2.t26,busbar_2.t30,bar 60 x 15 mm,,0.74,0.74,8.7,0.00025,5.9674,
+busbar_2/seg12,busbar_2.t30,busbar_2.tap_turret_fwd_a,bar 60 x 15 mm,,0.6825,0.6825,1.2,3e-05,5.5037,
+busbar_3/seg1,busbar_3.bat4,busbar_3.bat3,bar 60 x 15 mm,,0.1,0.1,30.975,0.00012,0.8064,
+busbar_3/seg2,busbar_3.bat3,busbar_3.tap_pump_B1,bar 60 x 15 mm,,0.15,0.15,61.95,0.00036,1.2096,
+busbar_3/seg3,busbar_3.tap_pump_B1,busbar_3.tap_pump_B2,bar 60 x 15 mm,,0.1,0.1,60.45,0.00023,0.8064,
+busbar_3/seg4,busbar_3.tap_pump_B2,busbar_3.t3,bar 60 x 15 mm,,0.3325,0.3325,60.45,0.00077,2.6813,
+busbar_3/seg5,busbar_3.t3,busbar_3.t7,bar 60 x 15 mm,,0.74,0.74,52.95,0.0015,5.9674,
+busbar_3/seg6,busbar_3.t7,busbar_3.t11,bar 60 x 15 mm,,0.74,0.74,45.45,0.00129,5.9674,
+busbar_3/seg7,busbar_3.t11,busbar_3.t15,bar 60 x 15 mm,,0.74,0.74,37.95,0.00108,5.9674,
+busbar_3/seg8,busbar_3.t15,busbar_3.bcdu_2_R,bar 60 x 15 mm,,0.5575,0.5575,31.5,0.00067,4.4957,
+busbar_3/seg9,busbar_3.bcdu_2_R,busbar_3.t19,bar 60 x 15 mm,,0.6225,0.6225,30.0,0.00072,5.0198,
+busbar_3/seg10,busbar_3.t19,busbar_3.t23,bar 60 x 15 mm,,0.74,0.74,22.5,0.00064,5.9674,
+busbar_3/seg11,busbar_3.t23,busbar_3.t27,bar 60 x 15 mm,,0.74,0.74,15.0,0.00043,5.9674,
+busbar_3/seg12,busbar_3.t27,busbar_3.t31,bar 60 x 15 mm,,0.74,0.74,7.5,0.00021,5.9674,
+busbar_4/seg1,busbar_4.bat8,busbar_4.bat7,bar 60 x 15 mm,,0.1,0.1,30.975,0.00012,0.8064,
+busbar_4/seg2,busbar_4.bat7,busbar_4.tap_pump_A1,bar 60 x 15 mm,,0.15,0.15,61.95,0.00036,1.2096,
+busbar_4/seg3,busbar_4.tap_pump_A1,busbar_4.tap_pump_A2,bar 60 x 15 mm,,0.1,0.1,60.45,0.00023,0.8064,
+busbar_4/seg4,busbar_4.tap_pump_A2,busbar_4.t4,bar 60 x 15 mm,,0.5175,0.5175,60.45,0.0012,4.1731,
+busbar_4/seg5,busbar_4.t4,busbar_4.t8,bar 60 x 15 mm,,0.74,0.74,52.95,0.0015,5.9674,
+busbar_4/seg6,busbar_4.t8,busbar_4.t12,bar 60 x 15 mm,,0.74,0.74,45.45,0.00129,5.9674,
+busbar_4/seg7,busbar_4.t12,busbar_4.t16,bar 60 x 15 mm,,0.74,0.74,37.95,0.00108,5.9674,
+busbar_4/seg8,busbar_4.t16,busbar_4.bcdu_1_R,bar 60 x 15 mm,,0.2925,0.2925,31.5,0.00035,2.3587,
+busbar_4/seg9,busbar_4.bcdu_1_R,busbar_4.t20,bar 60 x 15 mm,,0.8875,0.8875,30.0,0.00102,7.1568,
+busbar_4/seg10,busbar_4.t20,busbar_4.t24,bar 60 x 15 mm,,0.74,0.74,22.5,0.00064,5.9674,
+busbar_4/seg11,busbar_4.t24,busbar_4.t28,bar 60 x 15 mm,,0.74,0.74,15.0,0.00043,5.9674,
+busbar_4/seg12,busbar_4.t28,busbar_4.t32,bar 60 x 15 mm,,0.74,0.74,7.5,0.00021,5.9674,

@@ -323,6 +323,49 @@ routing.update(d, S)                        # ...and re-route everything in one 
 MIL-W-5088 / ECSS harness analysis, not flight-qualified, and it has no connector pin-outs, formboards, variants or parts library yet. How it compares with Siemens Capital, point by
 point and without hype, is in [docs/CAPITAL_BENCHMARK.md](docs/CAPITAL_BENCHMARK.md).
 
+## Alpha-Sigma Production Architecture
+
+**Alpha-Sigma** is a full-scale (1:1) orbital AI datacentre: a 4.5 x 4.5 x 8.0 m bus that carries **32 server racks**, folds into a 5.2 m launch envelope, and unfolds into a
+52.7 x 44.7 m spacecraft. It is an ordinary design file (it is not built into the app): the generator is
+[`sattelite designs/alpha_sigma_production_node.py`](sattelite%20designs/alpha_sigma_production_node.py) and it writes the editable `alpha_sigma_production_node.json` and the
+STEP file `Alpha_Sigma_v1.step` (2,446 bodies, 14 MB) into the same folder. Nothing that was already in that folder is touched.
+
+| Part | What is modelled |
+|---|---|
+| **Bus** | hollow aluminium hull 4,500 x 4,500 x 8,000 mm, 45 mm walls, origin at the centre (Z along the bus, Y toward the radiators, X toward the solar arrays); 8 ring frames (four per bank, 1,000 mm apart); a 2,600 mm launch-adapter ring at Z = -4,000 |
+| **Compute** | **32 trays** (2,800 x 2,400 x 70 mm) in two banks of 16 at **185 mm pitch**, a 400 mm avionics bay at Z = 0; every tray carries **8 CPUs + 24 accelerators** (256 CPUs, **768 accelerators**) under a grooved copper cold plate 2,600 x 2,200 x 18 mm |
+| **Corridors** | 850 mm walk-through corridors measured from the outer skin (805 mm clear beside the trays in X, 1,005 mm in Y, after the 45 mm wall) |
+| **Radiators** | two 4-panel **Z-fold** wings (5,000 mm panels, 20 m deployed, 6,800 mm high, 16 mm cores), 35 mm ridges at 120 degrees, 24 micro-tubes per panel each with 8 internal micro-ridges, toroidal bellows (radius 22) across every hinge, spring-driven hinge pins |
+| **Solar arrays** | two 6-panel **accordion** wings (4,000 mm panels, 24 m deployed, 3,800 mm wide, 18 mm thick), a solar-array drive (radius 220 x 850 mm) at each root, scissor bars and copper straps |
+| **Power schematic** (orange) | 8 batteries 900 x 600 x 450, two BCDUs in the bay, four 60 x 15 mm busbars, branch cables to every tray, pump and turret (24.8 kW at an assumed 100 V) |
+| **Cooling schematic** (hot red, cold blue) | two redundant ammonia loops: 4 pumps (radius 150 x 450 long), 2 accumulators, 2 bypass valves, 45 mm risers, 12 mm feeders to every tray |
+| **Optical schematic** (cyan) | photonic switch matrix, 4 EDFAs, a 15 mm armoured fibre trunk and a branch to every tray (73 fibre runs) |
+| **Optical terminals** | 4 inter-satellite-link turrets (azimuth base, U-yoke, 250 mm Cassegrain barrel, 45 degree fast-steering mirror) and 2 laser-receiver beacon units (emerald dome, 60 x 60 mm four-quadrant InGaAs detector, ring of 8 emitter diodes) |
+
+### Folding kinematics: `DEPLOYMENT_RATIO`
+
+One number, **`DEPLOYMENT_RATIO`**, folds the whole satellite: **0 = stowed for launch**, **1 = deployed in orbit**. The 22 folding joints (radiator root and Z-folds, solar-array roll,
+root fold and accordion folds) finish one after another, so the wings unfold in sequence instead of all at once. Stowed, the radiator wings lie flat in four layers against the +-Y walls and
+the solar arrays in six layers against the +-X walls, and the whole spacecraft is 5,062 x 5,137 mm across (inside the 5,200 mm envelope) with no body touching another. A second
+parameter, `SUN_ANGLE_DEG`, turns the arrays about their drives.
+
+* **Slider:** open `alpha_sigma_production_node.json`, select nothing and drag **deployment ratio** in the **Property Editor** (or in **Motion Studio**); the model moves at once, with no rebuild.
+* **View presets** (View tab): **1 Full** (everything, deployed), **2 Stowed** (shell and outside parts, ratio 0), **3 Schematics** (only the wiring, coolant and optical networks), **4 X-Ray**
+  (ghosted hull and racks with the networks solid). The Systems tab also has toggles for each network and an **Outside** toggle for the wings, turrets, beacons and radiator tubing.
+* **Honest limits.** The tray load (750 W), the 100 V bus and the ammonia loops are concept-study assumptions, not a flight design. The hull is a solid 45 mm wall (no honeycomb, no
+  rack rails). Ridges are one-sided. Only the large panels are checked against each other *during* the unfolding (at ratios 0.1 to 0.9); the stowed and deployed poses are checked
+  for every body. The two beacon units are my reading of "2 laser receiver beacons". Total mass is about 86 t as modelled, so it is **not flight-qualified** and no claim of that kind is made.
+
+```bash
+python3 "sattelite designs/alpha_sigma_production_node.py"                       # build, check, save the .json and the .step
+python3 "sattelite designs/alpha_sigma_production_node.py" --diagrams            # ...and the wiring / cooling / optical drawings
+python3 "sattelite designs/alpha_sigma_production_node.py" --deployment-ratio 0  # ...and a STEP of the stowed launch configuration
+python3 "sattelite designs/alpha_sigma_production_node.py" --set TRAY_PITCH_MM=190 --set FIN_RIDGE_ANGLE_DEG=140 --name my_node
+```
+
+It takes about a minute (most of it is the interference check; add `--no-check` to skip it). The drawings are in
+[`sattelite designs/alpha_sigma_production_node_systems`](sattelite%20designs/alpha_sigma_production_node_systems/).
+
 ## Live Digital Twin with satSTK (macOS)
 
 satCAD can be the 3D "digital twin" of the satellite that **satSTK** (the orbital mission and laser-link simulator, [Saiaarjay09/satSTK](https://github.com/Saiaarjay09/satSTK)) is flying.
@@ -456,7 +499,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`528 passed` and the path of the connector.
+`564 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -863,6 +906,7 @@ Open-source-CAD-software/
 │   ├── test_paths_and_docs.py  the designs-folder rule (every STEP file lives there) and the how-to guide's links and pictures
 │   ├── test_motion.py        Motion Studio: expressions, solver, presets, playback, docks
 │   ├── test_orbital_node_assembly.py  the Alpha generator: structure, parameters, geometry, colours, STEP
+│   ├── test_alpha_sigma.py   Alpha-Sigma: 32 racks, folding kinematics, schematics, systems report, DEPLOYMENT_RATIO slider and view presets
 │   ├── test_gui.py           the desktop application, headless: session / undo, navigator, property editor, viewport geometry, camera and mouse, window wiring
 │   ├── test_studio.py        the Studio server: safety checks, add/edit, open/save round trip, export, analysis
 │   ├── test_server.py        launches the real server and talks to it like Claude does
@@ -1051,7 +1095,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-528 tests. They include:
+564 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
@@ -1062,6 +1106,7 @@ python -m pytest -q
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
 - Digital Twin: packet parsing and rejection, the state, thermal colours, finding and posing the arrays and turrets (against the satSTK angle formulas), the UDP listener thread (real sockets, floods, bad packets, loopback-only, port in use, status datagrams), the HUD and the toggle.
 - Systems: the wiring / cooling / optical maths against hand calculations, the router (right angles, bend legs, clearances), stale-route detection and one-click update, the three diagrams (valid SVG, escaped text), the 3D routing view data and the Systems tab.
+- Alpha-Sigma: the 32-tray / 768-accelerator geometry, ring frames, turrets and beacons, the 22 folding joints (stowed envelope, no overlaps, no panel passing through another mid-fold), the 0 errors systems report, and the DEPLOYMENT_RATIO slider and four view presets in the window.
 - The heavy orbital node (bodies, 16 trays at the right pitch, ridge and rifled-tube geometry, the three parameters, the CLI), X-Ray, layers and Part Navigator folder toggles.
 - Panel placement and tilt on all six faces, parametric rebuilds, error messages, save/load (including older files),
   STEP round-tripping, the Stefan-Boltzmann and solar maths, picture and viewer output (including a script-injection test),
