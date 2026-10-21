@@ -289,6 +289,8 @@ def pump(app, seconds: float = 0.0, until=None, timeout: float = 5.0) -> bool:
 
 @pytest.fixture()
 def window(app):
+    if not ALPHA.exists():
+        pytest.skip("the example design files are in a separate private repository")
     from satcad.gui.ui_layout import MainWindow
     win = MainWindow(Session())
     try:

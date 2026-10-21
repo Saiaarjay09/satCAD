@@ -8,3 +8,5 @@ output/
 build/
 dist/
 installer/
+# satellite designs live in a separate private repository; this folder is created locally on first save
+sattelite designs/
