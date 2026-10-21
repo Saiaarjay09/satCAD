@@ -347,11 +347,13 @@ class Design:
     @staticmethod
     def _resolve(kind: str, params: dict) -> dict:
         if kind not in SCHEMAS:
-            raise DesignError(f"Unknown part type '{kind}'. Choose one of: {', '.join(SCHEMAS)}.")
+            raise DesignError(f"Unknown part type '{kind}'. Choose one of: {', '.join(SCHEMAS)}. "
+                              "(If this design came from a newer satCAD, update the app.)")
         schema = SCHEMAS[kind]
         unknown = set(params) - set(schema)
         if unknown:
-            raise DesignError(f"'{kind}' has no setting called {sorted(unknown)}. Allowed settings: {sorted(schema)}.")
+            raise DesignError(f"'{kind}' has no setting called {sorted(unknown)}. Allowed settings: {sorted(schema)}. "
+                              "(If this design came from a newer satCAD, update the app: newer designs can use settings an older version doesn't know.)")
         full = {k: (params[k] if k in params else v) for k, v in schema.items()}
         missing = [k for k, v in full.items() if isinstance(v, str) and v == REQ]
         if missing:
@@ -1182,7 +1184,7 @@ class Design:
         if self._name_taken(name):
             raise DesignError(f"A part or variable called '{name}' already exists. Pick another name, or use edit to change it.")
         if kind not in SCHEMAS:
-            raise DesignError(f"Unknown part type '{kind}'. Choose one of: {', '.join(SCHEMAS)}.")
+            raise DesignError(f"Unknown part type '{kind}'. Choose one of: {', '.join(SCHEMAS)}. (If this design came from a newer satCAD, update the app.)")
         self.features[name] = Feature(name, kind, dict(params))
         if self._batch_depth:
             return dict(name=name, type=kind, deferred=True)

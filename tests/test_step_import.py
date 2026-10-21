@@ -104,3 +104,11 @@ def test_a_saved_json_from_a_step_import_reopens(step_file, tmp_path):
     assert s.save(out)
     t = Session()
     assert t.open(out) and sorted(t.design.parts) == ["ball", "hub", "rod"]
+
+
+def test_an_older_app_hint_is_in_the_error_for_settings_it_does_not_know():
+    d = Design("x")
+    with pytest.raises(DesignError, match="newer satCAD"):
+        d.add("box", "b", length=1, width=1, height=1, brand_new_setting=3)
+    with pytest.raises(DesignError, match="newer satCAD"):
+        d.add("warp_drive", "w")

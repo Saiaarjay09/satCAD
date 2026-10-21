@@ -176,7 +176,12 @@ def make_handler(app: StudioState):
         def do_POST(self):
             if not self._host_ok() or self.headers.get("X-Studio-Token") != app.token:
                 return self._send(403, b"Forbidden", "text/plain")
-            n = int(self.headers.get("Content-Length") or 0)
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                return self._json({"error": "The request had an invalid Content-Length."}, 400)
+            if n < 0:                                   # a negative length would make rfile.read() wait for the connection to close
+                return self._json({"error": "The request had an invalid Content-Length."}, 400)
             if n > MAX_BODY:
                 return self._json({"error": "That file is too large."}, 413)
             try:

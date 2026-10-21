@@ -171,3 +171,16 @@ def test_analysis_of_an_empty_design_is_refused(app):
 def test_schemas_describe_every_part_type(app):
     code, s = call(app, "/api/schemas")
     assert code == 200 and "chassis" in s["kinds"] and s["kinds"]["chassis"]["length"] == "__required__" and "aluminum_6061" in s["materials"]
+
+
+def test_a_bad_content_length_is_refused_instead_of_hanging(app):
+    import http.client
+    for value in ("-5", "abc"):
+        conn = http.client.HTTPConnection("127.0.0.1", app.port, timeout=5)
+        conn.putrequest("POST", "/api/new")
+        conn.putheader("X-Studio-Token", "test-token")
+        conn.putheader("Content-Length", value)
+        conn.endheaders()
+        resp = conn.getresponse()
+        assert resp.status == 400 and b"Content-Length" in resp.read()
+        conn.close()
