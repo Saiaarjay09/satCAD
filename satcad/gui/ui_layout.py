@@ -206,6 +206,8 @@ class MainWindow(QMainWindow):
         g.add_button("STEP", "export", lambda: c.export("step"), "Export for other CAD programs")
         g.add_button("STL", "export", lambda: c.export("stl"), "Mesh for 3D printing")
         g.add_button("GLB", "export", lambda: c.export("glb"), "Web / AR viewers")
+        g.add_button("CAD Script", "expr", c.transpile, "Export Parametric Script (CAD Transpiler): the feature history and equations as native scripts for Siemens NX, "
+                                                       "Autodesk Fusion, SolidWorks and FreeCAD, so the model keeps its parametric tree instead of arriving as a dumb solid")
 
         mo = r.add_tab("Motion")
         g = mo.add_group("Motion Studio")
@@ -286,6 +288,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         for fmt, label in (("step", "Export STEP..."), ("stl", "Export STL..."), ("glb", "Export GLB...")):
             self._action(m, label, lambda f=fmt: c.export(f))
+        self._action(m, "Export Parametric Script (CAD Transpiler)...", c.transpile)
         m.addSeparator()
         self._action(m, "Quit", self.close, "Ctrl+Q")
         m = self.menuBar().addMenu("&Edit")

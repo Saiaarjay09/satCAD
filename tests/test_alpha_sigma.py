@@ -380,3 +380,28 @@ def test_command_line_prints_the_report_without_writing_files(tmp_path):
 def test_the_app_does_not_contain_the_satellite():
     sources = "".join(p.read_text() for p in (ROOT / "satcad").rglob("*.py")) + (ROOT / "satcad_app.spec").read_text()
     assert "alpha_sigma" not in sources.lower() and "Alpha-Sigma" not in sources
+
+
+# ===== the parametric transpiler on the big design ===========================================================================================
+def test_alpha_sigma_transpiles_and_its_variables_drive_the_ir(design):
+    from satcad import parametric_transpiler as tp
+    import transpiler_reference as ref
+    ir = tp.build_ir(design)
+    assert {p.name for p in ir.params} == {"TRAY_PITCH_MM", "FIN_RIDGE_ANGLE_DEG", "tray_z0", "fin_base_half"}
+    assert ir.params.params["TRAY_PITCH_MM"].unit == "mm" and ir.params.params["FIN_RIDGE_ANGLE_DEG"].unit == "deg"
+    cov = ir.coverage()
+    assert cov["native"] > 300 and cov["unsupported"] > 50                                     # routed cables and tubes are sweeps: reported, not written
+    for t in tp.TARGETS:
+        code = tp.GENERATORS[t](ir)
+        assert "TRAY_PITCH_MM" in code and "COVERAGE" in code
+        if t != "solidworks":
+            import ast
+            ast.parse(code)
+    # the IR rebuilds the bodies it can write, and a new tray pitch moves them the same way satCAD's own rebuild does
+    parts = ref.Reference(ir, dict(TRAY_PITCH_MM=190)).run()
+    design.set_variable("TRAY_PITCH_MM", 190)
+    compared = {k: v for k, v in parts.items() if k.startswith(("server_tray", "ai_accelerator", "host_cpu", "cold_plate"))}
+    assert len(compared) == 32 + 768 + 256 + 32
+    bad = ref.compare(design, compared)
+    design.set_variable("TRAY_PITCH_MM", 185)
+    assert bad == [], bad[:5]

@@ -248,6 +248,16 @@ class Commands:
         except (DesignError, OSError) as e:
             self.s.message.emit("error", f"Export failed: {e}")
 
+    def transpile(self) -> None:
+        """Parametric Transpiler Studio: the feature tree as native scripts for NX, Fusion, SolidWorks and FreeCAD."""
+        if not self.s.design.features:
+            self.s.message.emit("warn", "Nothing to export: the part has no features yet.")
+            return
+        from .transpiler_dialog import TranspilerDialog
+        dlg = TranspilerDialog(self.s.design, self.w)
+        self.transpiler_dialog = dlg                                                # keep a reference while the window is open
+        dlg.show()
+
     # ---- reports and analysis -------------------------------------------------------------------------------------------------------
     def mass_properties(self) -> None:
         m = self.s.design.measure()

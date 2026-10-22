@@ -326,6 +326,44 @@ routing.update(d, S)                        # ...and re-route everything in one 
 MIL-W-5088 / ECSS harness analysis, not flight-qualified, and it has no connector pin-outs, formboards, variants or parts library yet. How it compares with Siemens Capital, point by
 point and without hype, is in [docs/CAPITAL_BENCHMARK.md](docs/CAPITAL_BENCHMARK.md).
 
+## Cross-CAD parametric transpiler (solving the "dumb solid" STEP problem)
+
+Open a STEP file in SolidWorks, Fusion or NX and you get a **dumb solid**: the geometry arrives, but the feature tree and the equations do not. satCAD keeps the recipe
+(named variables, formulas and the feature history), so it can write that recipe out as a **script each program runs to rebuild the model with its own features and its own
+equation list**. Scripts for **Siemens NX** (NXOpen journal), **Autodesk Fusion** (API script), **SolidWorks** (VBA macro) and **FreeCAD** (FCMacro) come from one shared
+intermediate representation, so a variable you change here is a variable you can change there.
+
+| Where | How |
+|---|---|
+| **In the app** | **Simulate -> Export -> CAD Script** (or **File -> Export Parametric Script (CAD Transpiler)...**). A window opens with one tab per program, a checklist of the parameters and features it found, a live, colour-highlighted preview of the script, **Copy to Clipboard**, **Save Native Script...** and **Export Bundle (.STEP + All 4 Parametric Scripts)...** |
+| **From Python** | `from satcad import parametric_transpiler as tp` then `ir = tp.build_ir(design)` and `tp.export_nxopen_journal(ir)`, `tp.export_fusion_script(ir)`, `tp.export_solidworks_macro(ir)`, `tp.export_freecad_macro(ir)`, or `tp.export_bundle(design, "folder")` |
+| **From the shell** | `python -m satcad.parametric_transpiler design.json --out scripts --bundle` |
+
+**What you get in each program**
+
+| Program | Equations | Features that stay tied to those equations | Written as numbers or notes |
+|---|---|---|---|
+| **Siemens NX** | every variable and formula as an expression (Tools -> Expressions, Ctrl+E) | block edge lengths, cylinder and sphere sizes, linear-pattern count and pitch, boolean features, **move distances and hinge angles** | sketch extrudes, revolves, circular patterns, mirrors, fillets and shells are listed in the script as comments |
+| **Autodesk Fusion** | every variable and formula as a User Parameter (Modify -> Change Parameters, unitless so mixed formulas work) | box and cylinder sketch dimensions and extrude distances, rectangular-pattern quantity and spacing, combine (join / cut) | positions and rotations are evaluated when the script runs; spheres, sketch extrudes, revolves, mirrors and fillets are comments |
+| **SolidWorks** | every variable and formula in the Equation Manager | box sketch dimensions and extrude depth bound by equations | everything else is described in comments for you to finish |
+| **FreeCAD** | a `Params` spreadsheet with an alias per variable | box, cylinder and sphere sizes and (for unrotated bodies) positions, **Draft array count and pitch**, booleans, mirrors, cut tools for holes and cutouts | fillet sizes, rotations and placements through assemblies are numbers |
+
+**What the transpiler can and cannot carry over.** Boxes, hollow chassis, cylinders, spheres, rectangle / circle / polygon extrudes, revolves, booleans, linear / circular /
+grid patterns, mirrors, edge treatments, holes, cutouts and assembly placements (including hinge angles) are all read into the intermediate representation. Sweeps, lofts, screws,
+tilted panels and imported STEP bodies are **reported as unsupported** (they are left out of the scripts; use the STEP file from the same bundle for those bodies). Each feature
+is marked in the window and in the script header as **native** (every formula stays a formula), **evaluated** (some value became a number, for example a formula that reads another
+part's size, or the position of a hole) or **unsupported**.
+
+**Honest limits.**
+- The **intermediate representation and the formula translation are tested** inside satCAD: the IR is rebuilt with build123d and compared body by body with satCAD's own rebuild,
+  including after changing variables, and every formula is evaluated in each program's syntax and compared with satCAD's value. The generated scripts are also run against
+  stand-in APIs (they parse, register every parameter and issue the expected calls).
+- The calls into the **NX, Fusion and SolidWorks APIs have not been run against those programs** (there is no licence here). They are written from the public API shapes and will
+  probably need a small adjustment for your version. Read a script and try it on a copy first. The FreeCAD macro has been run only against a stand-in, too.
+- Only what is a **variable** in the design can be changed in the other program: a size written as a plain number stays a plain number. Motion Studio parameters (a
+  deployment ratio, a sun angle) are not part of the feature history, so they are not exported; hinge angles that are variables or formulas in the design are.
+- Holes and cutouts are placed from the target's size when you export, so they do not follow a later change of a variable.
+
 ## Live Digital Twin with satSTK (macOS)
 
 satCAD can be the 3D "digital twin" of the satellite that **satSTK** (the orbital mission and laser-link simulator, [Saiaarjay09/satSTK](https://github.com/Saiaarjay09/satSTK)) is flying.
@@ -818,6 +856,7 @@ Open-source-CAD-software/
 │   ├── systems.py            wiring / tubing / fibre netlists: engineering maths (Ohm, Darcy-Weisbach, radiator, fibre loss) and the rule checks
 │   ├── digital_twin.py       Digital Twin, the pure part: telemetry packets, the state, thermal colours, finding and posing the solar arrays and turrets
 │   ├── routing.py            the right-angled cable / tube router and the conversion of routes into swept 3D tubes
+│   ├── parametric_transpiler.py  the cross-CAD transpiler: variables + feature history -> NX / Fusion / SolidWorks / FreeCAD scripts (intermediate representation, formula translation, four backends)
 │   ├── diagrams.py           the wiring, cooling and optical diagrams, the 3D routing view and the CSV cut lists
 │   ├── viewer.py             writes the interactive 3D viewer (assembly tree, hinge sliders) and the animated mode-shape viewer
 │   ├── gui/                  THE DESKTOP APPLICATION (PySide6 + VTK)
@@ -867,6 +906,7 @@ Open-source-CAD-software/
 │   ├── test_motion.py        Motion Studio: expressions, solver, presets, playback, docks
 │   ├── test_orbital_node_assembly.py  the Alpha generator: structure, parameters, geometry, colours, STEP
 │   ├── test_step_import.py   opening STEP files: the step_import feature, Open, and error messages
+│   ├── test_parametric_transpiler.py  the transpiler: formula translation in each syntax, the IR against satCAD's own rebuild, the four scripts run against stand-in APIs, bundle, dialog
 │   ├── test_deployment_ratio_ui.py  the DEPLOYMENT_RATIO slider in the Property Editor and the four view presets
 │   ├── test_alpha_sigma.py   the Alpha-Sigma design checks (run only where its private design files are present)
 │   ├── test_gui.py           the desktop application, headless: session / undo, navigator, property editor, viewport geometry, camera and mouse, window wiring
@@ -1068,6 +1108,7 @@ python -m pytest -q
 - Volumes of extrudes, tubes, revolves, fillets, holes and pockets; pattern and mirror positions.
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
 - Digital Twin: packet parsing and rejection, the state, thermal colours, finding and posing the arrays and turrets (against the satSTK angle formulas), the UDP listener thread (real sockets, floods, bad packets, loopback-only, port in use, status datagrams), the HUD and the toggle.
+- Parametric transpiler: every formula rewritten for NX, Fusion, SolidWorks and FreeCAD and evaluated back to satCAD's number; the intermediate representation rebuilt with build123d and compared body by body with satCAD (also after changing variables); the four scripts parsed and run against stand-in APIs; the bundle, the command line and the dialog.
 - Systems: the wiring / cooling / optical maths against hand calculations, the router (right angles, bend legs, clearances), stale-route detection and one-click update, the three diagrams (valid SVG, escaped text), the 3D routing view data and the Systems tab.
 - Opening STEP files (one body per solid, names and colours kept, clear errors for missing or damaged files); the DEPLOYMENT_RATIO slider in the Property Editor and the four one-click view presets; the large private Alpha-Sigma design has its own checks that run only where its files are present.
 - The heavy orbital node (bodies, 16 trays at the right pitch, ridge and rifled-tube geometry, the three parameters, the CLI), X-Ray, layers and Part Navigator folder toggles.
