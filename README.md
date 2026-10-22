@@ -497,7 +497,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`572 passed` and the path of the connector.
+`610 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -1098,7 +1098,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-572 tests. They include:
+610 tests. They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
