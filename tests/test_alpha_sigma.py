@@ -405,3 +405,39 @@ def test_alpha_sigma_transpiles_and_its_variables_drive_the_ir(design):
     bad = ref.compare(design, compared)
     design.set_variable("TRAY_PITCH_MM", 185)
     assert bad == [], bad[:5]
+
+
+# ===== the 2D blueprint studio on the big design =============================================================================================
+def test_alpha_sigma_drawing_sheets(design, tmp_path):
+    import time
+    from satcad import drawing_studio as ds
+    t0 = time.time()
+    proj = ds.compute_projections(design)
+    sheet = ds.compose_sheet(design, proj)
+    assert time.time() - t0 < 90
+    assert proj.mode == "bbox" and any("FAST" in n for n in proj.notes) and sheet.meta["bodies"] == 2446          # too many bodies for exact HLR: bounding boxes
+    assert int(sheet.meta["scale"].split(":")[1]) in ds.STANDARD_SCALES
+    overall = {x["axis"]: x["value"] for x in sheet.dims if x.get("overall")}
+    assert overall["x"] == pytest.approx(52658, abs=2) and overall["y"] == pytest.approx(44723, abs=2) and overall["z"] == pytest.approx(9140, abs=2)
+    assert all("REF" in x["text"] for x in sheet.dims if x.get("overall"))                                          # larger than ISO 2768 covers: reference sizes
+    assert sheet.meta["bom"]["total_mass_kg"] == pytest.approx(sum(p.mass_kg for p in design.parts.values()), rel=1e-9)
+    radii = sorted({round(r) for v in proj.views.values() for *_, r, _e in v.axes}, reverse=True)
+    assert 1300 in radii and 220 in radii and 150 in radii                                                          # launch adapter ring, SADA / turret base, OISL barrels
+    assert any(p.style == "center" for p in sheet.layer("centerlines"))
+    # one tray, exact hidden-line removal at a drawing scale
+    tray = ds.build_sheet(design, "server_tray")
+    assert tray.meta["mode"] == "hlr" and tray.meta["scale"] == "1:50" and tray.meta["bodies"] == 1
+    assert {x["axis"]: x["value"] for x in tray.dims if x.get("overall")} == {"x": pytest.approx(2800.0), "y": pytest.approx(2400.0), "z": pytest.approx(70.0)}
+    # a sub-assembly
+    core = ds.build_sheet(design, "assembly:AlphaSigma_Compute_Core")
+    assert 700 < core.meta["bodies"] < 1500 and core.meta["bom"]["rows"] >= 4
+    # the stowed pose is drawn as it is folded
+    stowed = ds.compute_projections(design, None, as_.pose_matrices(design, 0.0))
+    b = stowed.box3d
+    assert b[3] - b[0] == pytest.approx(5062, abs=5) and b[4] - b[1] == pytest.approx(5137, abs=5)
+    # exports
+    for fmt, fn in (("dxf", ds.export_dxf), ("svg", ds.export_svg), ("pdf", ds.export_pdf)):
+        assert fn(tray, tmp_path / f"tray.{fmt}").stat().st_size > 5000
+    ezdxf = pytest.importorskip("ezdxf")
+    audit = ezdxf.readfile(str(ds.export_dxf(sheet, tmp_path / "full.dxf"))).audit()
+    assert not audit.errors and not audit.fixes

@@ -1,0 +1,2 @@
+pytest
+ezdxf    # optional: lets the drawing tests read the DXF back and audit it

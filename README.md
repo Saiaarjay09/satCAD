@@ -368,6 +368,44 @@ part's size, or the position of a hole) or **unsupported**.
   deployment ratio, a sun angle) are not part of the feature history, so they are not exported; hinge angles that are variables or formulas in the design are.
 - Holes and cutouts are placed from the target's size when you export, so they do not follow a later change of a variable.
 
+## 2D production drawings (hidden-line removal blueprint studio)
+
+satCAD turns the 3D model into a **dimensioned 2D drawing sheet** without leaving the program: four views by OpenCASCADE's own hidden-line removal (`HLRBRep_Algo`), dimensions
+tied to your variables, a title block and a bill of materials, exported as **DXF**, **SVG** and **PDF**.
+
+![An example drawing sheet: third-angle views, dimensions tied to variables, title block and bill of materials](docs/blueprint_sheet.png)
+
+| Where | What you do |
+|---|---|
+| **Drawing tab -> Generate 2D Drawing Sheet** | switches to the **2D Blueprint Studio** tab next to the 3D view and projects the model on a background thread, with a progress bar and a Cancel button, so the window stays responsive |
+| **Draw:** list | the whole assembly, **one sub-assembly**, **the part selected in the feature tree**, or any single part (type to search) |
+| **Hidden Lines** | switch the dashed hidden lines on or off |
+| **Print Mode** | flip between the dark blueprint sheet (navy, cyan and white lines) and the ISO / ASME print sheet (white paper, black ink); **A3 / A2** sheet size |
+| **Export .DXF / .SVG / .PDF** | AutoCAD R2000 DXF; grouped SVG; print-ready vector PDF (A3 or A2, landscape, 600 dpi) |
+| **Zoom and pan** | mouse wheel zooms, drag pans |
+| **From Python / the shell** | `from satcad import drawing_studio as ds; sheet = ds.build_sheet(design, "assembly:arm"); ds.export_dxf(sheet, "arm.dxf")` or `python -m satcad.drawing_studio design.json --part boss --formats dxf svg pdf` |
+
+**The sheet.** Third-angle projection: the front view looks from the -Y side (X to the right, Z up), the top view sits above it, the right-side view beside it, and an isometric
+view looks from the (+1, +1, +1) corner. Visible edges are 0.50 mm solid lines, hidden edges 0.25 mm dashed (4 mm dash, 2 mm gap), centre lines 0.18 mm dash-dot through cylinders (end-on
+cylinders get a cross). The scale is the largest standard one that fits (1:1, 1:2, 1:5 ... 1:1000 ...). An ISO border with grid zones **A-F** and **1-8**, a title block (title, scale,
+units, tolerance, projection, author, UTC date, drawing number, the third-angle symbol) and a bill of materials (item, part / sub-assembly, quantity, material, mass; the heaviest
+groups, with the full list in a CSV) are drawn for you.
+
+**Dimensions follow the model.** Overall width, depth and height are dimensioned in the views, and a size that is exactly one of your variables carries its name (`BASE_L = 240.0 ±0.5`).
+A box's length, width and height, a cylinder's height and its radius (shown as a diameter) that are written as `=VARIABLE` get their own dimension. Tolerances are the **ISO 2768-m**
+general tolerances for sizes up to 4000 mm; bigger sizes are marked `REF`. Change a variable, a feature or a Motion Studio slider (for example `DEPLOYMENT_RATIO`) and the sheet is
+re-projected and every dimension updated about a third of a second later, once you have made a first sheet.
+
+**Layers.** DXF layers are `0_VISIBLE` (colour 7, continuous), `1_HIDDEN` (8, dashed), `2_CENTERLINES` (1, centre), `3_DIMENSIONS` (3) and `4_TITLEBLOCK_BOM` (5); the SVG has the groups
+`visible_edges`, `hidden_edges`, `centerlines`, `dimensions` and `titleblock`.
+
+**Big assemblies.** Exact hidden-line removal of thousands of bodies is slow, so above 300 bodies the sheet is made from the **bounding boxes** of the bodies (still with hidden lines removed
+between them) and says so in the status line; pick a sub-assembly or a single part for exact edges.
+
+**Honest limits.** This is a first-pass production sheet, not a drafting package: no section or detail views, no hatching, no threads and **no GD&T feature control frames** (only the
+general tolerances above). Dimensions are placed automatically and can overlap in a busy view; a dimension on something smaller than about 6 mm on the sheet is left out. Parameter dimensions are
+made only for unrotated features outside an assembly. The DXF has been read back and audited with the `ezdxf` library, not opened in AutoCAD; the PDF is written with Qt's `QPdfWriter`.
+
 ## Live Digital Twin with satSTK (macOS)
 
 satCAD can be the 3D "digital twin" of the satellite that **satSTK** (the orbital mission and laser-link simulator, [Saiaarjay09/satSTK](https://github.com/Saiaarjay09/satSTK)) is flying.
@@ -501,7 +539,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`612 passed` and the path of the connector.
+`640 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -860,6 +898,7 @@ Open-source-CAD-software/
 │   ├── systems.py            wiring / tubing / fibre netlists: engineering maths (Ohm, Darcy-Weisbach, radiator, fibre loss) and the rule checks
 │   ├── digital_twin.py       Digital Twin, the pure part: telemetry packets, the state, thermal colours, finding and posing the solar arrays and turrets
 │   ├── routing.py            the right-angled cable / tube router and the conversion of routes into swept 3D tubes
+│   ├── drawing_studio.py     2D production drawings: OpenCASCADE hidden-line removal, third-angle views, dimensions, title block, bill of materials, DXF / SVG / PDF
 │   ├── parametric_transpiler.py  the cross-CAD transpiler: variables + feature history -> NX / Fusion / SolidWorks / FreeCAD scripts (intermediate representation, formula translation, four backends)
 │   ├── diagrams.py           the wiring, cooling and optical diagrams, the 3D routing view and the CSV cut lists
 │   ├── viewer.py             writes the interactive 3D viewer (assembly tree, hinge sliders) and the animated mode-shape viewer
@@ -910,6 +949,7 @@ Open-source-CAD-software/
 │   ├── test_motion.py        Motion Studio: expressions, solver, presets, playback, docks
 │   ├── test_orbital_node_assembly.py  the Alpha generator: structure, parameters, geometry, colours, STEP
 │   ├── test_step_import.py   opening STEP files: the step_import feature, Open, and error messages
+│   ├── test_drawing_studio.py  the 2D drawing studio: hidden-line removal, layout, dimensions, title block, BOM, DXF (audited with ezdxf), SVG, PDF, the blueprint tab and live sync
 │   ├── test_freecad_real.py  runs the generated FreeCAD macro in a real FreeCAD (skipped when FreeCAD is not installed)
 │   ├── test_parametric_transpiler.py  the transpiler: formula translation in each syntax, the IR against satCAD's own rebuild, the four scripts run against stand-in APIs, bundle, dialog
 │   ├── test_deployment_ratio_ui.py  the DEPLOYMENT_RATIO slider in the Property Editor and the four view presets
@@ -921,6 +961,7 @@ Open-source-CAD-software/
 │
 ├── tools/alpha_motion.py        the recipe for the example file with motion (not part of the app)
 ├── tools/make_howto_images.py   captures the annotated screenshots for the how-to guide from the real app
+├── tools/make_blueprint_picture.py captures the example drawing sheet shown in the README
 ├── tools/make_readme_picture.py captures the picture at the top of this README (the app with a small demo part)
 ├── tools/smoke_test_app.py   starts a packaged Studio and proves it works (used by the build)
 ├── .github/workflows/studio-release.yml   builds the Mac and Windows apps and publishes a release when a version tag is pushed
@@ -1103,7 +1144,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-612 tests (two of them need FreeCAD installed and are skipped otherwise). They include:
+642 tests (two of them need FreeCAD installed and are skipped otherwise). They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
@@ -1113,6 +1154,7 @@ python -m pytest -q
 - Volumes of extrudes, tubes, revolves, fillets, holes and pockets; pattern and mirror positions.
 - Formulas: precedence, trig in degrees, safe evaluation (formulas can't run code), circular and forward references, rollback.
 - Digital Twin: packet parsing and rejection, the state, thermal colours, finding and posing the arrays and turrets (against the satSTK angle formulas), the UDP listener thread (real sockets, floods, bad packets, loopback-only, port in use, status datagrams), the HUD and the toggle.
+- 2D drawing studio: hidden-line removal checked against the projected boxes, third-angle layout inside the border, ISO 2768 tolerances, parameter-linked dimensions (and their update when a variable or a Motion Studio parameter changes), title block, bill of materials against the design mass, DXF read back and audited with ezdxf, grouped SVG, A3 / A2 PDF, the worker thread and the blueprint tab.
 - Parametric transpiler: every formula rewritten for NX, Fusion, SolidWorks and FreeCAD and evaluated back to satCAD's number; the intermediate representation rebuilt with build123d and compared body by body with satCAD (also after changing variables); the four scripts parsed and run against stand-in APIs; the bundle, the command line and the dialog.
 - Systems: the wiring / cooling / optical maths against hand calculations, the router (right angles, bend legs, clearances), stale-route detection and one-click update, the three diagrams (valid SVG, escaped text), the 3D routing view data and the Systems tab.
 - Opening STEP files (one body per solid, names and colours kept, clear errors for missing or damaged files); the DEPLOYMENT_RATIO slider in the Property Editor and the four one-click view presets; the large private Alpha-Sigma design has its own checks that run only where its files are present.

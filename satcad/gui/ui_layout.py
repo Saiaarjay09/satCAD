@@ -16,8 +16,9 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import (QDockWidget, QLabel, QMainWindow, QMessageBox, QTextEdit, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QComboBox, QDockWidget, QFileDialog, QLabel, QMainWindow, QMessageBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget)
 
+from .blueprint_view import BlueprintStudio
 from .commands import Commands
 from .digital_twin_listener import DigitalTwin
 from .icons import icon
@@ -69,7 +70,12 @@ class MainWindow(QMainWindow):
         centre = QWidget()
         centre.setObjectName("root")
         QVBoxLayout(centre).setContentsMargins(0, 0, 0, 0)
-        centre.layout().addWidget(self.viewport)
+        self.centre_tabs = QTabWidget()                                      # 3D model | 2D blueprint sheet
+        self.centre_tabs.setDocumentMode(True)
+        self.centre_tabs.addTab(self.viewport, "3D Model")
+        self.blueprint = BlueprintStudio()
+        self.centre_tabs.addTab(self.blueprint, "2D Blueprint Studio")
+        centre.layout().addWidget(self.centre_tabs)
         self.setCentralWidget(centre)
 
         # ---- ribbon (top) ---------------------------------------------------------------------------------------------------------------
@@ -244,6 +250,37 @@ class MainWindow(QMainWindow):
                                                     f"Show or hide everything on the '{key}' layer", checkable=True)
             self._layer_buttons[key].setChecked(True)
 
+        dr = r.add_tab("Drawing")
+        g = dr.add_group("2D Blueprints")
+        g.add_button("Generate 2D Drawing Sheet", "fit", self.generate_drawing, "Switch to the 2D Blueprint Studio and run OpenCASCADE hidden-line removal: front, top, right and "
+                                                                                 "isometric views in third angle, dimensions, title block and bill of materials")
+        self.hidden_button = g.add_button("Hidden Lines", "wire", lambda: self.blueprint.set_hidden(self.hidden_button.isChecked()),
+                                          "Toggle the dashed hidden lines (ON / OFF)", checkable=True)
+        self.hidden_button.setChecked(True)
+        holder = QWidget()
+        hl = QVBoxLayout(holder)
+        hl.setContentsMargins(2, 6, 2, 0)
+        hl.setSpacing(2)
+        hl.addWidget(QLabel("Draw:"))
+        self.draw_selector = QComboBox()
+        self.draw_selector.setEditable(True)
+        self.draw_selector.setMinimumWidth(190)
+        self.draw_selector.setToolTip("Full assembly, one sub-assembly, the part selected in the feature tree, or any single part (type to search)")
+        self.draw_selector.activated.connect(lambda _=0: self.generate_drawing())
+        hl.addWidget(self.draw_selector)
+        self.sheet_selector = QComboBox()
+        self.sheet_selector.addItems(["A3", "A2"])
+        self.sheet_selector.setToolTip("Sheet size")
+        self.sheet_selector.activated.connect(lambda _=0: self.blueprint.set_sheet_size(self.sheet_selector.currentText()))
+        hl.addWidget(self.sheet_selector)
+        g.row.addWidget(holder)
+        self.theme_button = g.add_button("Print Mode", "shaded", self.toggle_blueprint_theme, "Switch between the dark blueprint sheet and the ISO / ASME print sheet "
+                                                                                              "(white paper, black ink)", checkable=True)
+        g = dr.add_group("Export")
+        for fmt, tip in (("dxf", "AutoCAD R2000 DXF with the layers 0_VISIBLE, 1_HIDDEN, 2_CENTERLINES, 3_DIMENSIONS and 4_TITLEBLOCK_BOM"),
+                         ("svg", "Grouped vector SVG for web documents, Inkscape or Illustrator"), ("pdf", "Print-ready vector PDF, landscape, 600 dpi")):
+            g.add_button(f"Export .{fmt.upper()}", "export", lambda _=False, f=fmt: self.export_drawing(f), tip)
+
         view = r.add_tab("View")
         g = view.add_group("Orient")
         for label, key, ic in (("Isometric", "iso", "view_iso"), ("Top", "top", "view_top"), ("Front", "front", "view_front"),
@@ -336,6 +373,10 @@ class MainWindow(QMainWindow):
     def _wire(self) -> None:
         s, v, nav = self.session, self.viewport, self.navigator
         s.changed.connect(self._refresh_all)
+        s.changed.connect(self._blueprint_sync)
+        self._fill_draw_selector()
+        if self.motion is not None:
+            self.motion.model_changed.connect(self._blueprint_pose)
         s.loaded.connect(lambda: setattr(self, "_fit_next", True))
         s.message.connect(self._on_message)
         if self.twin is not None:
@@ -424,6 +465,82 @@ class MainWindow(QMainWindow):
                                               "(designs such as the heavy orbital node already do this).")
         else:
             self.session.message.emit("info", "X-Ray on: shell parts are 85% transparent, everything else is solid." if self.xray else "X-Ray off.")
+
+    # ---- 2D blueprint studio -----------------------------------------------------------------------------------------------------------
+    def _drawing_items(self) -> list:
+        d = self.session.design
+        items = ["Full assembly", "Selected part (feature tree)"]
+        items += [f"assembly: {n}" for n, f in d.features.items() if f.kind == "assembly"]
+        items += list(d.parts)
+        return items
+
+    def _fill_draw_selector(self) -> None:
+        current = self.draw_selector.currentText() or "Full assembly"
+        self.draw_selector.blockSignals(True)
+        self.draw_selector.clear()
+        self.draw_selector.addItems(self._drawing_items())
+        i = self.draw_selector.findText(current)
+        self.draw_selector.setCurrentIndex(i if i >= 0 else 0)
+        self.draw_selector.blockSignals(False)
+
+    def _drawing_selection(self) -> str:
+        text = self.draw_selector.currentText().strip()
+        if text in ("", "Full assembly"):
+            return ""
+        if text == "Selected part (feature tree)":
+            part = self._part_for(self.session.selected)
+            return part or ""
+        return text
+
+    def _drawing_matrices(self):
+        """Part poses from Motion Studio (the DEPLOYMENT_RATIO slider and friends), so the drawing shows the pose on screen."""
+        m = self.motion
+        if m is None or not getattr(m, "joints", None):
+            return None
+        try:
+            return m.solver.part_matrices(m.joint_values(m.t))
+        except Exception:                                                    # a half-edited joint must not stop the drawing
+            return None
+
+    def generate_drawing(self) -> None:
+        if not self.session.design.parts:
+            self.session.message.emit("warn", "Nothing to draw: the part is empty.")
+            return
+        self.centre_tabs.setCurrentWidget(self.blueprint)
+        self.blueprint.opts.show_hidden = self.hidden_button.isChecked()
+        self.blueprint.opts.sheet = self.sheet_selector.currentText()
+        self.blueprint.generate(self.session.design, self._drawing_selection(), self._drawing_matrices())
+
+    def toggle_blueprint_theme(self) -> None:
+        self.blueprint.set_theme("print" if self.theme_button.isChecked() else "dark")
+
+    def export_drawing(self, fmt: str, path: str | None = None) -> bool:
+        if self.blueprint.sheet is None:
+            self.session.message.emit("warn", "Generate the drawing sheet first (Drawing tab -> Generate 2D Drawing Sheet).")
+            return False
+        from ..paths import designs_dir
+        if not path:
+            path, _ = QFileDialog.getSaveFileName(self, f"Export .{fmt.upper()}", str(designs_dir() / f"{self.session.design.name}_drawing.{fmt}"), f"{fmt.upper()} (*.{fmt})")
+        if not path:
+            return False
+        try:
+            self.blueprint.export(fmt, path)
+        except Exception as e:                                               # noqa: BLE001
+            self.session.message.emit("error", f"Drawing export failed: {e}")
+            return False
+        self.session.message.emit("info", f"Exported {path}")
+        return True
+
+    def _blueprint_sync(self) -> None:
+        """The design changed: refresh the part list and re-project the sheet (after the first one has been made)."""
+        self._fill_draw_selector()
+        self.blueprint.set_context(self.session.design, self._drawing_selection(), self._drawing_matrices())
+        self.blueprint.request_refresh()
+
+    def _blueprint_pose(self) -> None:
+        """A Motion Studio parameter moved (the DEPLOYMENT_RATIO slider, a sun angle ...): re-project the posed model and update every dimension."""
+        self.blueprint.set_context(self.session.design, None, self._drawing_matrices())
+        self.blueprint.request_refresh()
 
     def apply_preset(self, n: int) -> None:
         """One-click view presets. 1 full production satellite, 2 stowed launch configuration, 3 internal schematics only, 4 x-ray ghost hull with the diagrams."""
