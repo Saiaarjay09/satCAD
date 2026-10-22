@@ -1534,6 +1534,7 @@ def f_mirror(name, source, plane, offset):
 def f_fillet(target_name, selector, radius, chamfer):
     """Round (radius > 0) or bevel the edges selected by `selector` ('all' or 'parallel:x|y|z'). FreeCAD cannot bind a fillet size to an expression: numbers."""
     base = OBJ[target_name]
+    doc.recompute()                                           # the base shape only exists after a recompute
     idx = []
     for i, e in enumerate(base.Shape.Edges, 1):
         if len(e.Vertexes) < 2:

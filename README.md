@@ -359,7 +359,11 @@ part's size, or the position of a hole) or **unsupported**.
   including after changing variables, and every formula is evaluated in each program's syntax and compared with satCAD's value. The generated scripts are also run against
   stand-in APIs (they parse, register every parameter and issue the expected calls).
 - The calls into the **NX, Fusion and SolidWorks APIs have not been run against those programs** (there is no licence here). They are written from the public API shapes and will
-  probably need a small adjustment for your version. Read a script and try it on a copy first. The FreeCAD macro has been run only against a stand-in, too.
+  probably need a small adjustment for your version. Read a script and try it on a copy first.
+- The **FreeCAD macro has been run in a real FreeCAD (1.1.4, headless)**: on two test designs the rebuilt bodies match satCAD's volumes and bounding boxes, and after changing
+  variables in the `Params` spreadsheet (a plate size, a tray count, a wall thickness) the model follows, array counts included. That check lives in `tests/test_freecad_real.py`; it runs
+  when FreeCAD is installed (`SATCAD_FREECADCMD=/path/to/freecadcmd python -m pytest tests/test_freecad_real.py`) and is skipped otherwise. Bodies placed through an assembly hinge keep
+  the position they had when exported.
 - Only what is a **variable** in the design can be changed in the other program: a size written as a plain number stays a plain number. Motion Studio parameters (a
   deployment ratio, a sun angle) are not part of the feature history, so they are not exported; hinge angles that are variables or formulas in the design are.
 - Holes and cutouts are placed from the target's size when you export, so they do not follow a later change of a variable.
@@ -497,7 +501,7 @@ cd Open-source-CAD-software
 
 `setup.sh` does three things: creates a private Python environment in `.venv/`, installs the libraries from
 `requirements.txt`, and runs the self-tests. It takes about a minute. It ends with
-`610 passed` and the path of the connector.
+`612 passed` and the path of the connector.
 
 ### Let Claude use it
 
@@ -906,6 +910,7 @@ Open-source-CAD-software/
 │   ├── test_motion.py        Motion Studio: expressions, solver, presets, playback, docks
 │   ├── test_orbital_node_assembly.py  the Alpha generator: structure, parameters, geometry, colours, STEP
 │   ├── test_step_import.py   opening STEP files: the step_import feature, Open, and error messages
+│   ├── test_freecad_real.py  runs the generated FreeCAD macro in a real FreeCAD (skipped when FreeCAD is not installed)
 │   ├── test_parametric_transpiler.py  the transpiler: formula translation in each syntax, the IR against satCAD's own rebuild, the four scripts run against stand-in APIs, bundle, dialog
 │   ├── test_deployment_ratio_ui.py  the DEPLOYMENT_RATIO slider in the Property Editor and the four view presets
 │   ├── test_alpha_sigma.py   the Alpha-Sigma design checks (run only where its private design files are present)
@@ -1098,7 +1103,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-610 tests. They include:
+612 tests (two of them need FreeCAD installed and are skipped otherwise). They include:
 
 - **Physics checks against textbook formulas**: mass, centre of mass and inertia tensors of boxes, hollow shells, spheres,
   cylinders on all three axes, rotated and offset bodies, the parallel-axis theorem, and equipment mass spread through a cavity.
