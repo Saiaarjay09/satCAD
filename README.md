@@ -6,10 +6,9 @@ run a first-order **vibration and stress analysis** on it, and export it as a CA
 whole design. You do not need any CAD experience. It can also be used as an ordinary Python library, or through ready-made
 example scripts.
 
-![A server housing with two radiator wings and a laser terminal, built through SatCAD](docs/example_orbital_node.png)
+![The satCAD desktop application: ribbon, Part Navigator, 3D viewport, Property Editor and Information window](docs/satcad_app.png)
 
-*Built entirely by Claude through SatCAD: a 3 m server housing, two radiator wings sized from a 50 kW heat
-load, and a laser terminal.*
+*The satCAD desktop app: ribbon across the top, the feature tree on the left, the 3D view in the middle and the editable settings of the selected part on the right.*
 
 SatCAD is built on **[build123d](https://github.com/gumyr/build123d)** (a free, open-source CAD library on the
 OpenCascade geometry kernel) and talks to Claude through the **Model Context Protocol (MCP)**. It was written
@@ -129,7 +128,7 @@ feature tree on the left (Datum CSYS(0), Block(1), Cylinder(2), Unite(3), Edge B
 dimensions of whatever is selected, plus an Expressions tab), a shaded **3D viewport** with edge highlights in the centre, and an Information window
 for messages and results. Dark theme throughout. It is NX-*inspired* (layout and workflow); it uses none of Siemens' artwork or code.
 
-![The satCAD desktop application](docs/satcad_app.png)
+![The satCAD window with its five areas numbered](docs/howto/01_overview.png)
 
 **Download it:** the **Releases** page has a `.dmg` for Apple-silicon Macs and a `-setup.exe` installer for Windows (unsigned, so the first launch shows a warning; the release notes explain the two clicks). **Or run it from source** (Python 3.10 or newer; the graphics libraries are large, roughly 400 MB):
 
@@ -877,6 +876,7 @@ Open-source-CAD-software/
 │
 ├── tools/alpha_motion.py        the recipe for the example file with motion (not part of the app)
 ├── tools/make_howto_images.py   captures the annotated screenshots for the how-to guide from the real app
+├── tools/make_readme_picture.py captures the picture at the top of this README (the app with a small demo part)
 ├── tools/smoke_test_app.py   starts a packaged Studio and proves it works (used by the build)
 ├── .github/workflows/studio-release.yml   builds the Mac and Windows apps and publishes a release when a version tag is pushed
 │
@@ -886,7 +886,7 @@ Open-source-CAD-software/
     ├── RELEASE_NOTES.md                  the text shown on each GitHub release
     ├── NX_BENCHMARK.md                   line-by-line scoreboard against Siemens NX's publicly described capabilities
     ├── ROADMAP.md                        what SatCAD covers today vs professional CAD, and the plan to close the gap
-    ├── example_orbital_node.png          the picture at the top of this README
+    ├── satcad_app.png                    the picture at the top of this README (made by tools/make_readme_picture.py)
     ├── orbital_datacentre.png            whole-satellite picture used in section 3f
     └── orbital_datacentre_core_detail.png  cut-away picture used in section 3f
 ```
